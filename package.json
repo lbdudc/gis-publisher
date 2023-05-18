@@ -1,0 +1,15 @@
+{
+  "author": "",
+  "bin": {
+    "gisbuilder2": "index.js"
+  },
+  "dependencies": {
+    "meow": "^12.0.1"
+  },
+  "description": "",
+  "license": "ISC",
+  "main": "index.js",
+  "name": "gisbuilder2",
+  "type": "module",
+  "version": "0.1.0"
+}
