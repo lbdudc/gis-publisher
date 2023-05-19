@@ -1,7 +1,6 @@
 package-lock.json diff
 *.sql diff
 * text eol=lf
-
 # Explicitly declare text files you want to always be normalized and converted
 # to native line endings on checkout.
 *.java text
@@ -10,7 +9,6 @@ package-lock.json diff
 *.css text
 *.html text
 *.json text
-
 # Denote all files that are truly binary and should not be modified.
 *.png binary
 *.jpg binary
@@ -24,3 +22,4 @@ package-lock.json diff
 *.eps binary
 *.swf binary
 *.bin binary
+*.zip filter=lfs diff=lfs merge=lfs -text
