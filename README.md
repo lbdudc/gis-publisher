@@ -14,5 +14,8 @@ npm install
 npm run prepare
 
 # to run
-npm gisbuilder2 args
+npx gisbuilder2 args
+
+# for example
+npx gisbuilder2 examples/hello-world/
 ```
