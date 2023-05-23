@@ -1,9 +1,11 @@
 import { DerivationEngine } from "spl-js-engine";
 import { Uploader, BasicSSHUploadStrategy } from "code-uploader";
 import Processor from "shapefile-reader";
+import path from "path";
 
 export default class Gisbuilder2 {
   constructor(folder, bbox) {
+    if (!folder.endsWith(path.sep)) folder += path.sep;
     this.shapefilesFolder = folder;
     this.bbox = bbox;
   }
