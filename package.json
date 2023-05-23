@@ -3,7 +3,10 @@
     "gisbuilder2": "index.js"
   },
   "dependencies": {
-    "meow": "^12.0.1"
+    "code-uploader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/code-uploader.git",
+    "shapefile-reader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/shapefile-reader.git",
+    "meow": "^12.0.1",
+    "spl-js-engine": "^4.0.0"
   },
   "devDependencies": {
     "eslint": "^8.40.0",
@@ -21,7 +24,6 @@
       "prettier --write"
     ]
   },
-  "main": "index.js",
   "name": "gisbuilder2",
   "scripts": {
     "lint": "npm-run-all lint_eslint lint_prettier",
