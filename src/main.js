@@ -2,6 +2,12 @@ import { DerivationEngine } from "spl-js-engine";
 import { Uploader, BasicSSHUploadStrategy } from "code-uploader";
 import Processor from "shapefile-reader";
 import path from "path";
+import {
+  createEntityScheme,
+  createBaseDSLInstance,
+  endDSLInstance,
+} from "./dsl-util.js";
+import gisdslParser from "gisdsl";
 
 export default class Gisbuilder2 {
   constructor(folder, bbox) {
@@ -23,6 +29,13 @@ export default class Gisbuilder2 {
       records: false, // true by default
     });
     const res = await processor.getSHPFolderInfo(this.shapefilesFolder);
-    console.log(res);
+
+    let dslInstance =
+      createBaseDSLInstance("test") +
+      createEntityScheme(res) +
+      endDSLInstance("test");
+    console.log(dslInstance);
+    const json = gisdslParser(dslInstance);
+    console.log(json);
   }
 }
