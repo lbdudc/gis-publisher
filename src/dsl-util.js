@@ -33,7 +33,7 @@ export const createEntityScheme = (values) => {
     schemaSyntax += `CREATE ENTITY ${upperCamelCase(value.name)} (${EOL}`;
 
     // Add the id field, which is the first one
-    schemaSyntax += `${TAB}id Long IDENTIFIER`;
+    schemaSyntax += `${TAB}id Long IDENTIFIER DISPLAY_STRING`;
 
     // If there are more fields
     if (value.schema.length > 0) {
