@@ -30,10 +30,7 @@ export default class Gisbuilder2 {
       geographicInfo: false, // true by default
       records: false, // true by default
     });
-    const shapefilesInfo = await processor.processFolder(
-      shapefilesFolder,
-      shapefilesFolder
-    );
+    const shapefilesInfo = await processor.processFolder(shapefilesFolder);
 
     // const client = new SearchAPIClient({
     //   catalogURI: 'https://demo.pygeoapi.io/master',
