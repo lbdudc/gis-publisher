@@ -6,6 +6,14 @@ const EOL = "\n";
 export function createBaseDSLInstance(name) {
   let str = `CREATE GIS ${name} USING 4326;${EOL}`;
   str += `USE GIS ${name};${EOL}${EOL}`;
+  str += `SET DEPLOYMENT (${EOL}`;
+  str += `  "client_deploy_url" "http://gis.lbd.org.es",${EOL}`;
+  str += `  "geoserver_user" "admin",${EOL}`;
+  str += `  "geoserver_password" "geoserver",${EOL}`;
+  str += `  "server_deploy_url" "http://gis.lbd.org.es/backend",${EOL}`;
+  str += `  "geoserver_url_wms" "http://gis.lbd.org.es/geoserver",${EOL}`;
+  str += `  "server_deploy_port" "9001"${EOL}`;
+  str += `);${EOL}${EOL}`;
   return str;
 }
 
