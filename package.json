@@ -1,12 +1,14 @@
 {
   "bin": {
-    "gisbuilder2": "index.js"
+    "gisbuilder2": "src/cli.js"
   },
   "dependencies": {
     "code-uploader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/code-uploader.git",
-    "shapefile-reader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/shapefile-reader.git",
+    "giscatalog-client": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/giscatalog-client.git",
+    "gisdsl": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/gisdsl.git",
     "meow": "^12.0.1",
-    "spl-js-engine": "^4.0.0"
+    "shapefile-reader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/shapefile-reader.git",
+    "spl-js-engine": "^4.0.3"
   },
   "devDependencies": {
     "eslint": "^8.40.0",
