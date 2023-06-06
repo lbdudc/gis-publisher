@@ -13,7 +13,7 @@ npm install
 # to set husky git hooks (linting)
 npm run prepare
 
-# to run
+# to run, first update config.json and then:
 npx gisbuilder2 args
 
 # for example

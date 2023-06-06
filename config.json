@@ -7,10 +7,10 @@
     "modelTransformation": "../lps/src/platform/transformation.js"
   },
   "deploy": {
-    "host": "host",
-    "port": 1234,
-    "username": "username",
-    "certRoute": "path to private key",
-    "remoteRepoPath": "remote path where the project should be deployed"
+    "host": "compostela.lbd.org.es",
+    "port": 22222,
+    "username": "ci",
+    "certRoute": "/Users/acortinas/.ssh/id_ed25519",
+    "remoteRepoPath": "/home/ci/code"
   }
 }
