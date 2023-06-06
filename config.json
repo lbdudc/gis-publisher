@@ -1,0 +1,16 @@
+{
+  "platform": {
+    "codePath": "../lps/src/platform/code",
+    "featureModel": "../lps/src/platform/model.xml",
+    "config": "../lps/src/platform/config.json",
+    "extraJS": "../lps/src/platform/extra.js",
+    "modelTransformation": "../lps/src/platform/transformation.js"
+  },
+  "deploy": {
+    "host": "host",
+    "port": 1234,
+    "username": "username",
+    "certRoute": "path to private key",
+    "remoteRepoPath": "remote path where the project should be deployed"
+  }
+}
