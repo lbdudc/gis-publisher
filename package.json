@@ -5,7 +5,7 @@
   "dependencies": {
     "code-uploader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/code-uploader.git",
     "giscatalog-client": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/giscatalog-client.git",
-    "gisdsl": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/gisdsl.git",
+    "gis-dsl": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/gisdsl.git",
     "meow": "^12.0.1",
     "shapefile-reader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/shapefile-reader.git",
     "spl-js-engine": "^4.0.3"
@@ -34,5 +34,5 @@
     "prepare": "husky install"
   },
   "type": "module",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }

@@ -8,7 +8,7 @@ import {
   createBaseDSLInstance,
   endDSLInstance,
 } from "./dsl-util.js";
-import gisdslParser from "gisdsl";
+import gisdslParser from "gis-dsl";
 import fs from "fs";
 
 export default class Gisbuilder2 {

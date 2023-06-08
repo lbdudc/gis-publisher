@@ -17,5 +17,5 @@ npm run prepare
 npx gisbuilder2 args
 
 # for example
-npx gisbuilder2 examples/hello-world/
+npx gisbuilder2 examples/hello-world
 ```
