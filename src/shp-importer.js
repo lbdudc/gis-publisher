@@ -3,6 +3,8 @@ import { Blob, File } from "buffer";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
 
 export async function uploadShapefiles(shapefilesFolder, host) {
+  console.info("Starting the import of shapefiles");
+
   // Fist, we wait for the server to be running to send the shapefiles
   await _waitForServer(host);
 
@@ -28,6 +30,7 @@ export async function uploadShapefiles(shapefilesFolder, host) {
       shapefilesFolder,
       zipFile
     );
+    console.info(`Uploading data to the entity ${entity.name} from ${zipFile}`);
     await _uploadShapefileData(
       host,
       response.temporaryFile,
@@ -35,12 +38,11 @@ export async function uploadShapefiles(shapefilesFolder, host) {
       entity
     );
   }
+  console.info("The import of Shapefiles has finished");
 }
 
-async function _getEntities() {
-  return await fetch(`http://localhost:8080/api/entities`).then((res) =>
-    res.json()
-  );
+async function _getEntities(host) {
+  return await fetch(`${host}/backend/api/entities`).then((res) => res.json());
 }
 
 async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
@@ -54,7 +56,7 @@ async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
     type: "application/x-zip-compressed",
   });
   formData.append("file", fileObj);
-  return await fetch(`${host}/api/import`, {
+  return await fetch(`${host}/backend/api/import`, {
     method: "POST",
     body: formData,
   })
@@ -68,10 +70,11 @@ async function _waitForServer(host) {
   let isServerRunning = false;
   while (!isServerRunning) {
     try {
-      await fetch(`${host}`);
+      await fetch(`${host}/backend`);
       isServerRunning = true;
     } catch (e) {
-      // Waiting 5 minutes to retry
+      console.info("Server not available. Retrying connection...");
+      // Waiting 5 seconds to retry
       await new Promise((r) => setTimeout(r, 5000));
     }
   }
@@ -107,7 +110,7 @@ async function _uploadShapefileData(
     ncolumns: shapefileAttrs.length,
     type: "shapefile",
   };
-  return await fetch(`${host}/api/import`, {
+  return await fetch(`${host}/backend/api/import`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
