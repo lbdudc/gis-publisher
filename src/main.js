@@ -68,7 +68,7 @@ export default class Gisbuilder2 {
 
     if (shouldDeploy) {
       await this.deploy();
-      this.uploadShapefiles(shapefilesFolder);
+      await this.uploadShapefiles(shapefilesFolder);
     }
   }
 
@@ -105,7 +105,6 @@ export default class Gisbuilder2 {
       const entity = entities.find((entity) =>
         entity.name.endsWith(this._fileNameToEntityName(zipFile))
       );
-
       // We upload a temporary file to the server, and we get returned the attributes
       const response = await this._uploadTempShapefile(
         shapefilesFolder,
@@ -126,17 +125,19 @@ export default class Gisbuilder2 {
   }
 
   async _uploadTempShapefile(shapefilesFolder, shapefileName) {
-    const data = {
-      type: "shapefile",
-      encoding: "utf-8",
-      file: await readFile(`${shapefilesFolder}/output/${shapefileName}`),
-    };
+    const formData = new FormData();
+    formData.append("type", "shapefile");
+    formData.append("encoding", "utf-8");
+    /*    const file = fs.readFileSync(`${shapefilesFolder.replace(/\\$/, '')}output/${shapefileName}`);
+      const fileBlob = new Blob([file], { type: 'application/octet-stream' });
+      formData.append("file", fileBlob);*/
+    console.log(shapefilesFolder, shapefileName);
     return await fetch(`${this.config.host}/backend/api/import`, {
       method: "POST",
       headers: {
         "Content-Type": "multipart/form-data",
       },
-      body: JSON.stringify(data),
+      body: formData,
     }).then((res) => res.json());
   }
 
@@ -184,7 +185,11 @@ export default class Gisbuilder2 {
      * }
      */
     console.log(tmpShapefile, shapefileAttrs, entity); // TODO: remove this!
-    const data = {};
+    const data = {
+      file: tmpShapefile,
+      type: "shapefile",
+      encoding: "utf-8",
+    };
     return await fetch(`${this.config.host}/backend/api/import`, {
       method: "PUT",
       body: JSON.stringify(data),
