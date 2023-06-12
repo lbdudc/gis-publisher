@@ -5,6 +5,7 @@ import Processor from "shapefile-reader";
 import path from "path";
 import {
   createEntityScheme,
+  createMapFromEntity,
   createBaseDSLInstance,
   endDSLInstance,
 } from "./dsl-util.js";
@@ -45,6 +46,7 @@ export default class Gisbuilder2 {
     let dslInstance =
       createBaseDSLInstance("test") +
       createEntityScheme(shapefilesInfo) +
+      createMapFromEntity(shapefilesInfo, shapefilesFolder) +
       endDSLInstance("test");
 
     if (DEBUG) {

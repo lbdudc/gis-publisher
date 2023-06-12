@@ -44,7 +44,7 @@ export const createEntityScheme = (values) => {
             if (schema.name == "id") {
               schema.name += "2";
             }
-            return `${TAB}${lowerCamelCase(schema.name)} ${
+            return `${TAB}${schema.name.toLowerCase()} ${
               TYPES_REL[schema.type] || schema.type
             }`;
           })
@@ -57,3 +57,36 @@ export const createEntityScheme = (values) => {
 
   return schemaSyntax;
 };
+
+export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
+  let mapSyntax = ``;
+
+  mapSyntax += shapefileInfo
+    .map((sh) => {
+      console.log(sh);
+      return (
+        `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
+        `${TAB}styleLayerDescriptor "${shapefilesFolder}${sh.name}.sld"${EOL}` +
+        `);${EOL}${EOL}` +
+        `CREATE WMS LAYER ${lowerCamelCase(sh.name)}Layer AS "${
+          sh.name
+        }" (${EOL}` +
+        `${TAB}${upperCamelCase(sh.name)} ${lowerCamelCase(
+          sh.name
+        )}LayerStyle${EOL}` +
+        `);${EOL}`
+      );
+    })
+    .join(EOL);
+
+  mapSyntax += `CREATE MAP main AS "Map" (${EOL}`;
+  mapSyntax += shapefileInfo
+    .map((sh) => {
+      return `${TAB}${lowerCamelCase(sh.name)}Layer`;
+    })
+    .join(`,${EOL}`);
+  mapSyntax += `${EOL}`;
+  mapSyntax += `);${EOL}${EOL}`;
+
+  return mapSyntax;
+}
