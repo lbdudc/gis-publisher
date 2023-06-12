@@ -12,5 +12,6 @@
     "username": "ci",
     "certRoute": "/Users/acortinas/.ssh/id_ed25519",
     "remoteRepoPath": "/home/ci/code"
-  }
+  },
+  "host": "http://gis.lbd.org.es"
 }

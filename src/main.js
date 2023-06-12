@@ -11,6 +11,8 @@ import {
 import gisdslParser from "gis-dsl";
 import fs from "fs";
 
+import { uploadShapefiles } from "./shp-importer.js";
+
 export default class Gisbuilder2 {
   constructor(config, debug) {
     this.config = config;
@@ -66,7 +68,8 @@ export default class Gisbuilder2 {
     engine.generateProduct("output", json);
 
     if (shouldDeploy) {
-      this.deploy();
+      await this.deploy();
+      await uploadShapefiles(shapefilesFolder, this.config.host);
     }
   }
 
