@@ -35,7 +35,7 @@ if (!folder) {
 
 const bbox = cli.flags.bbox;
 
-const gisbuilder2 = new Gisbuilder2(config, cli.flags.debug);
+const gisbuilder2 = new Gisbuilder2(config);
 gisbuilder2.run(folder, bbox, !cli.flags.generate);
 
 console.log(`Running gisbuilder2 for folder ${folder} and bbox ${bbox}`);

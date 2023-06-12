@@ -13,16 +13,17 @@ import fs from "fs";
 
 import { uploadShapefiles } from "./shp-importer.js";
 
+const DEBUG = process.env.DEBUG;
+
 export default class Gisbuilder2 {
-  constructor(config, debug) {
+  constructor(config) {
     this.config = config;
-    this.debug = debug;
   }
 
   async run(shapefilesFolder, bbox, shouldDeploy) {
     if (!shapefilesFolder.endsWith(path.sep)) shapefilesFolder += path.sep;
 
-    if (this.debug) {
+    if (DEBUG) {
       console.log(SearchAPIClient);
     }
 
@@ -46,13 +47,13 @@ export default class Gisbuilder2 {
       createEntityScheme(shapefilesInfo) +
       endDSLInstance("test");
 
-    if (this.debug) {
+    if (DEBUG) {
       console.log(dslInstance);
     }
 
     const json = gisdslParser(dslInstance);
 
-    if (this.debug) {
+    if (DEBUG) {
       fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
     }
 
@@ -62,7 +63,7 @@ export default class Gisbuilder2 {
       config: readJsonFromFile(this.config.platform.config),
       extraJS: readFile(this.config.platform.extraJS),
       modelTransformation: readFile(this.config.platform.modelTransformation),
-      verbose: false,
+      verbose: DEBUG,
     });
 
     engine.generateProduct("output", json);
