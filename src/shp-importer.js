@@ -56,22 +56,29 @@ async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
     type: "application/x-zip-compressed",
   });
   formData.append("file", fileObj);
-  return await fetch(`${host}/backend/api/import`, {
-    method: "POST",
-    body: formData,
-  })
-    .then((res) => res.json())
-    .catch((err) =>
-      console.error(`Error uploading shapefile ${shapefileName}`, err)
-    );
+  try {
+    const response = await await fetch(`${host}/backend/api/import`, {
+      method: "POST",
+      body: formData,
+    });
+    return await response.json();
+  } catch (err) {
+    console.error(`Error uploading shapefile ${shapefileName}`, err);
+    throw err;
+  }
 }
 
 async function _waitForServer(host) {
   let isServerRunning = false;
   while (!isServerRunning) {
     try {
-      await fetch(`${host}/backend`);
-      isServerRunning = true;
+      const response = await fetch(`${host}/backend`);
+      if (response.status != 502) {
+        isServerRunning = true;
+      } else {
+        console.info("Server not available. Retrying connection...");
+        await new Promise((r) => setTimeout(r, 5000));
+      }
     } catch (e) {
       console.info("Server not available. Retrying connection...");
       // Waiting 5 seconds to retry
