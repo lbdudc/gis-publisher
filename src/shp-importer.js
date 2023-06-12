@@ -112,7 +112,8 @@ async function _waitForServer(host) {
 function _getShapefiles(shapefilesFolder) {
   return fs
     .readdirSync(shapefilesFolder + "/output")
-    .filter((fName) => fName.indexOf(".zip") !== -1);
+    .filter((fName) => fName.indexOf(".zip") !== -1)
+    .filter((fName) => fName != ".zip");
 }
 
 async function _uploadShapefileData(
