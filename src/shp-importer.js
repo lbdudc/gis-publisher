@@ -2,6 +2,8 @@ import fs from "fs";
 import { Blob, File } from "buffer";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
 
+const DEBUG = process.env.DEBUG;
+
 export async function uploadShapefiles(shapefilesFolder, host) {
   console.info("Starting the import of shapefiles");
 
@@ -11,6 +13,9 @@ export async function uploadShapefiles(shapefilesFolder, host) {
   /* Secondly, we get all the entities from the server to create the mapping between
     the shapefiles' columns and the entities' attributes */
   const entities = await _getEntities(host);
+  if (DEBUG) {
+    console.log(entities);
+  }
 
   /*
   Next, we do the following: we obtain the name of the entity from the name of the ZIP file
@@ -19,7 +24,13 @@ export async function uploadShapefiles(shapefilesFolder, host) {
     Once all this information is obtained, we map the attributes and send a request
     to the server to load the data into the database.
    */
+  if (DEBUG) {
+    console.log(shapefilesFolder);
+  }
   const zipFiles = _getShapefiles(shapefilesFolder);
+  if (DEBUG) {
+    console.log(zipFiles);
+  }
   for (const zipFile of zipFiles) {
     const entity = entities.find((entity) =>
       entity.name.endsWith(_fileNameToEntityName(zipFile))
@@ -42,6 +53,9 @@ export async function uploadShapefiles(shapefilesFolder, host) {
 }
 
 async function _getEntities(host) {
+  if (DEBUG) {
+    console.log(`${host}/backend/api/entities`);
+  }
   return await fetch(`${host}/backend/api/entities`).then((res) => res.json());
 }
 
@@ -49,6 +63,11 @@ async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
   const formData = new FormData();
   formData.append("type", "shapefile");
   formData.append("encoding", "utf-8");
+  if (DEBUG) {
+    console.log(
+      `${shapefilesFolder.replace(/\\$/, "")}output/${shapefileName}`
+    );
+  }
   const file = fs.readFileSync(
     `${shapefilesFolder.replace(/\\$/, "")}output/${shapefileName}`
   );
@@ -61,6 +80,9 @@ async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
       method: "POST",
       body: formData,
     });
+    if (DEBUG) {
+      console.log(response);
+    }
     return await response.json();
   } catch (err) {
     console.error(`Error uploading shapefile ${shapefileName}`, err);
@@ -117,6 +139,9 @@ async function _uploadShapefileData(
     ncolumns: shapefileAttrs.length,
     type: "shapefile",
   };
+  if (DEBUG) {
+    console.log(data);
+  }
   return await fetch(`${host}/backend/api/import`, {
     method: "PUT",
     headers: {

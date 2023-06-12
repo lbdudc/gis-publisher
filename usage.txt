@@ -3,7 +3,7 @@
     General options:
       --help            # Print this info
       --generate, -g    # Just generate the product, do not deploy
-      --debug           # Print debug messages
       --version         # Print version
       --bbox            # Bounding box to restrict the search. Format is expected to be:
                         # southwest_lng,southwest_lat,northeast_lng,northeast_lat
+    To print debug messages, set the env variable DEBUG=true
