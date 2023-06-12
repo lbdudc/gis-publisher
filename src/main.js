@@ -90,7 +90,6 @@ export default class Gisbuilder2 {
 
     deployConf.forceBuild = true;
     deployConf.repoPath = "output";
-    deployConf.REPO_DIRECTORY = "output";
 
     // Upload and deploy code
     await uploader.uploadCode(deployConf);
