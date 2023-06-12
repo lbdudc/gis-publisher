@@ -1,5 +1,9 @@
 import { DerivationEngine, readJsonFromFile, readFile } from "spl-js-engine";
-import { Uploader, DebianUploadStrategy } from "code-uploader";
+import {
+  Uploader,
+  DebianUploadStrategy,
+  AWSUploadStrategy,
+} from "code-uploader";
 import { SearchAPIClient } from "giscatalog-client";
 import Processor from "shapefile-reader";
 import path from "path";
@@ -72,18 +76,23 @@ export default class Gisbuilder2 {
 
   async deploy() {
     const uploader = new Uploader();
-    uploader.setUploadStrategy(new DebianUploadStrategy());
 
-    const config = {
-      host: this.config.deploy.host,
-      port: this.config.deploy.port,
-      username: this.config.deploy.username,
-      certRoute: this.config.deploy.certRoute,
-      repoPath: "output",
-      remoteRepoPath: this.config.deploy.remoteRepoPath,
+    const strategies = {
+      ssh: new DebianUploadStrategy(),
+      aws: new AWSUploadStrategy(),
     };
 
+    uploader.setUploadStrategy(
+      strategies[this.config.deploy.type] || strategies.ssh
+    );
+
+    let deployConf = this.config.deploy;
+
+    deployConf.forceBuild = true;
+    deployConf.repoPath = "output";
+    deployConf.REPO_DIRECTORY = "output";
+
     // Upload and deploy code
-    await uploader.uploadCode(config);
+    await uploader.uploadCode(deployConf);
   }
 }

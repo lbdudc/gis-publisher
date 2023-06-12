@@ -7,6 +7,7 @@
     "modelTransformation": "../lps/src/platform/transformation.js"
   },
   "deploy": {
+    "type": "ssh",
     "host": "compostela.lbd.org.es",
     "port": 22222,
     "username": "ci",
