@@ -16,5 +16,8 @@ export function lowerCamelCase(str) {
  * @returns {String}
  */
 export function upperCamelCase(str) {
+  if (str.startsWith(0)) {
+    str = str.slice(3);
+  }
   return lowerCamelCase(str).replace(/^[a-z]/, (m) => m.toUpperCase());
 }
