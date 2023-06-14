@@ -50,14 +50,12 @@ export default class Gisbuilder2 {
       endDSLInstance("test");
 
     if (DEBUG) {
-      console.log(dslInstance);
+      fs.writeFileSync("spec.dsl", dslInstance, "utf-8");
     }
 
     const json = gisdslParser(dslInstance);
 
-    if (DEBUG) {
-      fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
-    }
+    fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
 
     const engine = await new DerivationEngine({
       codePath: this.config.platform.codePath,
@@ -68,7 +66,7 @@ export default class Gisbuilder2 {
       verbose: DEBUG,
     });
 
-    engine.generateProduct("output", json);
+    engine.generateProduct("output", readJsonFromFile("spec.json"));
 
     if (shouldDeploy) {
       await this.deploy();
