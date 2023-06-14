@@ -22,6 +22,17 @@ npx gisbuilder2 examples/hello-world
 
 ## Example of config.json
 
+### Local
+
+- Pre-requisites:
+Have docker and docker-compose installed
+
+```json
+"deploy": {
+    "type": "local",
+}
+```
+
 ### AWS
 
 ```json

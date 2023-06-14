@@ -3,6 +3,7 @@ import {
   Uploader,
   DebianUploadStrategy,
   AWSUploadStrategy,
+  LocalUploadStrategy,
 } from "code-uploader";
 import { SearchAPIClient } from "giscatalog-client";
 import Processor from "shapefile-reader";
@@ -80,15 +81,15 @@ export default class Gisbuilder2 {
     const strategies = {
       ssh: new DebianUploadStrategy(),
       aws: new AWSUploadStrategy(),
+      local: new LocalUploadStrategy()
     };
 
     uploader.setUploadStrategy(
-      strategies[this.config.deploy.type] || strategies.ssh
+      strategies[this.config.deploy.type] || strategies.local
     );
 
     let deployConf = this.config.deploy;
 
-    deployConf.forceBuild = true;
     deployConf.repoPath = "output";
 
     // Upload and deploy code
