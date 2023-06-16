@@ -32,6 +32,7 @@ export async function uploadShapefiles(shapefilesFolder, host) {
     console.log(zipFiles);
   }
   for (const zipFile of zipFiles) {
+    await new Promise((r) => setTimeout(r, 15000));
     const entity = entities.find((entity) =>
       entity.name.endsWith(_fileNameToEntityName(zipFile))
     );
