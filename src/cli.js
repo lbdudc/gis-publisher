@@ -9,9 +9,6 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const usage = fs.readFileSync(path.join(__dirname, "../usage.txt"), "utf8");
-const config = JSON.parse(
-  fs.readFileSync(path.join(__dirname, "../config.json"), "utf8")
-);
 
 const cli = meow(usage, {
   importMeta: import.meta,
@@ -25,8 +22,24 @@ const cli = meow(usage, {
       default: false,
       shortFlag: "g",
     },
+    config: {
+      type: "string",
+      isRequired: false,
+    },
   },
 });
+
+let configFile;
+if (cli.flags.config) {
+  configFile = fs.readFileSync(
+    path.join(process.cwd(), cli.flags.config),
+    "utf8"
+  );
+} else {
+  configFile = fs.readFileSync(path.join(__dirname, "../config.json"), "utf8");
+}
+
+const config = JSON.parse(configFile);
 
 const folder = cli.input.at(0);
 if (!folder) {

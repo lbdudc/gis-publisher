@@ -4,6 +4,7 @@
       --help            # Print this info
       --generate, -g    # Just generate the product, do not deploy
       --version         # Print version
+      --config          # Path to config file (default config file if not used)
       --bbox            # Bounding box to restrict the search. Format is expected to be:
                         # southwest_lng,southwest_lat,northeast_lng,northeast_lat
     To print debug messages, set the env variable DEBUG=true
