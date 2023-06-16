@@ -49,7 +49,7 @@ export default class Gisbuilder2 {
     // console.log(collections);
 
     let dslInstance =
-      createBaseDSLInstance("test") +
+      createBaseDSLInstance("test", this.config.deploy.type == "local") +
       createEntityScheme(shapefilesInfo) +
       createMapFromEntity(shapefilesInfo, shapefilesFolder) +
       endDSLInstance("test");
@@ -85,7 +85,7 @@ export default class Gisbuilder2 {
     const strategies = {
       ssh: new DebianUploadStrategy(),
       aws: new AWSUploadStrategy(),
-      local: new LocalUploadStrategy()
+      local: new LocalUploadStrategy(),
     };
 
     uploader.setUploadStrategy(
