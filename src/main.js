@@ -26,9 +26,13 @@ export default class Gisbuilder2 {
     this.config = config;
   }
 
-  async run(shapefilesFolder, bbox, shouldDeploy) {
+  async run(shapefilesFolder, bbox, shouldDeploy, onlyImport) {
     if (!shapefilesFolder.endsWith(path.sep)) shapefilesFolder += path.sep;
 
+    if (onlyImport) {
+      await uploadShapefiles(shapefilesFolder, this.config.host);
+      return;
+    }
     if (DEBUG) {
       console.log(SearchAPIClient);
     }
