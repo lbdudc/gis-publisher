@@ -21,7 +21,7 @@ import { uploadShapefiles } from "./shp-importer.js";
 
 const DEBUG = process.env.DEBUG;
 
-export default class Gisbuilder2 {
+export default class GISPublisher {
   constructor(config) {
     this.config = config;
   }
