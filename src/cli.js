@@ -22,6 +22,11 @@ const cli = meow(usage, {
       default: false,
       shortFlag: "g",
     },
+    onlyImport: {
+      type: "boolean",
+      default: false,
+      shortFlag: "i",
+    },
     config: {
       type: "string",
       isRequired: false,
@@ -49,6 +54,6 @@ if (!folder) {
 const bbox = cli.flags.bbox;
 
 const gisbuilder2 = new Gisbuilder2(config);
-gisbuilder2.run(folder, bbox, !cli.flags.generate);
+gisbuilder2.run(folder, bbox, !cli.flags.generate, cli.flags.onlyImport);
 
 console.log(`Running gisbuilder2 for folder ${folder} and bbox ${bbox}`);
