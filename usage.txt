@@ -1,4 +1,4 @@
-    Usage: gisbuilder2 shapefilesFolder
+    Usage: gispublisher shapefilesFolder
 
     General options:
       --help            # Print this info

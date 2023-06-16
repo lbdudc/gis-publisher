@@ -1,13 +1,13 @@
 {
   "bin": {
-    "gisbuilder2": "src/cli.js"
+    "gispublisher": "src/cli.js"
   },
   "dependencies": {
-    "code-uploader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/code-uploader.git",
-    "gis-dsl": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/gisdsl.git",
-    "giscatalog-client": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/giscatalog-client.git",
+    "code-uploader": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/code-uploader.git",
+    "gis-dsl": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/gisdsl.git",
+    "giscatalog-client": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/giscatalog-client.git",
     "meow": "^12.0.1",
-    "shapefile-reader": "git+https://gitlab.lbd.org.es/GEMA/lps/gisbuilder2/shapefile-reader.git",
+    "shapefile-reader": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/shapefile-reader.git",
     "spl-js-engine": "^4.0.3"
   },
   "devDependencies": {
@@ -26,7 +26,7 @@
       "prettier --write"
     ]
   },
-  "name": "gisbuilder2",
+  "name": "gispublisher",
   "scripts": {
     "lint": "npm-run-all lint_eslint lint_prettier",
     "lint_eslint": "eslint --ext js,vue --fix src",
@@ -34,5 +34,5 @@
     "prepare": "husky install"
   },
   "type": "module",
-  "version": "0.1.1"
+  "version": "0.2.0"
 }

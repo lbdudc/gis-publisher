@@ -1,4 +1,4 @@
-# gisbuilder2
+# gispublisher
 
 Tool to automatically generate a web-based GIS from a set of shapefiles and, optionally, from a OGC WCS.
 
@@ -14,10 +14,10 @@ npm install
 npm run prepare
 
 # to run, first update config.json and then:
-npx gisbuilder2 args
+npx gispublisher args
 
 # for example
-npx gisbuilder2 examples/hello-world
+npx gispublisher examples/hello-world
 ```
 
 ## Example of config.json
@@ -25,7 +25,7 @@ npx gisbuilder2 examples/hello-world
 ### Local
 
 - Pre-requisites:
-Have docker and docker-compose installed
+  Have docker and docker-compose installed
 
 ```json
 "deploy": {

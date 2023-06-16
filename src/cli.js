@@ -2,7 +2,7 @@
 
 import meow from "meow";
 import fs from "fs";
-import Gisbuilder2 from "./main.js";
+import GISPublisher from "./main.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -53,7 +53,7 @@ if (!folder) {
 
 const bbox = cli.flags.bbox;
 
-const gisbuilder2 = new Gisbuilder2(config);
-gisbuilder2.run(folder, bbox, !cli.flags.generate, cli.flags.onlyImport);
+const gispublisher = new GISPublisher(config);
+gispublisher.run(folder, bbox, !cli.flags.generate, cli.flags.onlyImport);
 
-console.log(`Running gisbuilder2 for folder ${folder} and bbox ${bbox}`);
+console.log(`Running gispublisher for folder ${folder} and bbox ${bbox}`);
