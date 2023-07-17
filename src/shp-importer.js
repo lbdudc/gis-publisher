@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 import { Blob, File } from "buffer";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
 
@@ -67,11 +68,15 @@ async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
   formData.append("encoding", "utf-8");
   if (DEBUG) {
     console.log(
-      `${shapefilesFolder.replace(/\\$/, "")}output/${shapefileName}`
+      `${shapefilesFolder.replace(/\\$/, "")}${path.sep}output${
+        path.sep
+      }${shapefileName}`
     );
   }
   const file = fs.readFileSync(
-    `${shapefilesFolder.replace(/\\$/, "")}output/${shapefileName}`
+    `${shapefilesFolder.replace(/\\$/, "")}${path.sep}output${
+      path.sep
+    }${shapefileName}`
   );
   const fileObj = new File([new Blob([file])], shapefileName, {
     type: "application/x-zip-compressed",
