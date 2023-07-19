@@ -1,4 +1,5 @@
 import fs from "fs";
+import path from "path";
 import { Blob, File } from "buffer";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
 
@@ -49,6 +50,7 @@ export async function uploadShapefiles(shapefilesFolder, host) {
       response.values,
       entity
     );
+    await _restartBBox(host, entity);
   }
   console.info("The import of Shapefiles has finished");
 }
@@ -66,18 +68,22 @@ async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
   formData.append("encoding", "utf-8");
   if (DEBUG) {
     console.log(
-      `${shapefilesFolder.replace(/\\$/, "")}output/${shapefileName}`
+      `${shapefilesFolder.replace(/\\$/, "")}${path.sep}output${
+        path.sep
+      }${shapefileName}`
     );
   }
   const file = fs.readFileSync(
-    `${shapefilesFolder.replace(/\\$/, "")}output/${shapefileName}`
+    `${shapefilesFolder.replace(/\\$/, "")}${path.sep}output${
+      path.sep
+    }${shapefileName}`
   );
   const fileObj = new File([new Blob([file])], shapefileName, {
     type: "application/x-zip-compressed",
   });
   formData.append("file", fileObj);
   try {
-    const response = await await fetch(`${host}/backend/api/import`, {
+    const response = await fetch(`${host}/backend/api/import`, {
       method: "POST",
       body: formData,
     });
@@ -152,6 +158,19 @@ async function _uploadShapefileData(
     body: JSON.stringify(data),
   }).catch((err) =>
     console.error(`Error inserting data into entity ${entity.name}`, err)
+  );
+}
+
+async function _restartBBox(host, entity) {
+  // Before making the request we get the name of the entity and convert it to camelCase format with the first letter being lowercase
+  const entityNameParts = entity.name.split(".");
+  let entityName = entityNameParts[entityNameParts.length - 1];
+  entityName = entityName.replace(/^./, entityName[0].toLowerCase());
+  return await fetch(
+    `${host}/backend/api/entities/${entityName}s/geom/restart`,
+    {
+      method: "PUT",
+    }
   );
 }
 
