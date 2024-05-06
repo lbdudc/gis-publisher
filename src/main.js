@@ -100,6 +100,11 @@ export default class GISPublisher {
 
     deployConf.repoPath = "output";
 
+    if (deployConf.type && deployConf.type.toLowerCase() == "aws") {
+      const ip = await uploader.createInstance(deployConf);
+      deployConf.host = ip;
+    }
+
     // Upload and deploy code
     await uploader.uploadCode(deployConf);
   }
