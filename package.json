@@ -1,13 +1,21 @@
 {
+  "name": "@lbdudc/gis-publisher",
+  "homepage": "https://github.com/lbdudc/gis-publisher#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lbdudc/gis-publisher.git"
+  },
+  "type": "module",
+  "version": "0.2.1",
   "bin": {
     "gispublisher": "src/cli.js"
   },
   "dependencies": {
-    "code-uploader": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/code-uploader.git",
-    "gis-dsl": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/gisdsl.git",
+    "code-uploader": "@lbdudc/gp-code-uploader",
+    "gis-dsl": "@lbdudc/gp-gis-dsl",
     "giscatalog-client": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/giscatalog-client.git",
     "meow": "^12.0.1",
-    "shapefile-reader": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/shapefile-reader.git",
+    "shapefile-reader": "@lbdudc/gp-shapedile-reader",
     "spl-js-engine": "^4.0.3"
   },
   "devDependencies": {
@@ -26,13 +34,10 @@
       "prettier --write"
     ]
   },
-  "name": "gispublisher",
   "scripts": {
     "lint": "npm-run-all lint_eslint lint_prettier",
     "lint_eslint": "eslint --ext js,vue --fix src",
     "lint_prettier": "prettier --write --ignore-unknown src",
     "prepare": "husky install"
-  },
-  "type": "module",
-  "version": "0.2.0"
+  }
 }
