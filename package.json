@@ -10,6 +10,9 @@
   "bin": {
     "gispublisher": "src/cli.js"
   },
+  "engines": {
+    "node": ">=19.0.0"
+  },
   "dependencies": {
     "code-uploader": "@lbdudc/gp-code-uploader",
     "gis-dsl": "@lbdudc/gp-gis-dsl",
