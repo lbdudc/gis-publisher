@@ -4,9 +4,9 @@ import {
   DebianUploadStrategy,
   AWSUploadStrategy,
   LocalUploadStrategy,
-} from "code-uploader";
+} from "@lbdudc/gp-code-uploader";
 import { SearchAPIClient } from "giscatalog-client";
-import Processor from "shapefile-reader";
+import Processor from "@lbdudc/gp-shapefile-reader";
 import path from "path";
 import {
   createEntityScheme,
@@ -14,7 +14,7 @@ import {
   createBaseDSLInstance,
   endDSLInstance,
 } from "./dsl-util.js";
-import gisdslParser from "gis-dsl";
+import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 
 import { uploadShapefiles } from "./shp-importer.js";
