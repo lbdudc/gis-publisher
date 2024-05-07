@@ -6,7 +6,7 @@
     "url": "git+https://github.com/lbdudc/gis-publisher.git"
   },
   "type": "module",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "bin": {
     "gispublisher": "src/cli.js"
   },
