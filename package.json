@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@lbdudc/gp-code-uploader": "^1.1.2",
-    "@lbdudc/gp-gis-dsl": "^0.2.1",
+    "@lbdudc/gp-gis-dsl": "^0.2.2",
     "@lbdudc/gp-shapefile-reader": "^1.1.1",
     "giscatalog-client": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/giscatalog-client.git",
     "meow": "^12.0.1",
