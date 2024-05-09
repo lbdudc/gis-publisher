@@ -64,6 +64,11 @@ export default class GISPublisher {
 
     const json = gisdslParser(dslInstance);
 
+    // Set custom feature selection
+    if (this.config.features && this.config.features.length > 0) {
+      json.features = this.config.features;
+    }
+
     fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
 
     const engine = await new DerivationEngine({

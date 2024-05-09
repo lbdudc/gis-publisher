@@ -46,6 +46,18 @@ npm install -g @lbdudc/gis-publisher
 }
 ```
 
+Also, if you can customize the features selected in your feature model adding a "features" key in the `config.json` file. For example:
+
+```json
+{
+  ...
+  "features": [
+    "feature1",
+    "feature2"
+  ],
+}
+```
+
 - Change the `config.json` file to match your needs. Choosing the type of deployment (local, ssh or aws) and the necessary parameters for each one. You can find more information about the configuration in the [Changing the config.json](#changing-the-configjson) section.
 
 - Add your shapefiles in a folder. The tool accepts shapefiles with the following extensions: `.shp`, `.shx`, `.dbf`, `.prj`, `.cpg` and `.sld`. Also accepts `.zip` files containing the shapefiles.
