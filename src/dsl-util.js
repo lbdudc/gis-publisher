@@ -90,7 +90,7 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
       } else {
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
-          `${TAB}geometryType ${geometryType},${EOL}` +
+          `${TAB}geometryType ${geometryType.toUpperCase()},${EOL}` +
           `${TAB}fillColor ${generateRandomHexColor(sh.name)},${EOL}` +
           `${TAB}strokeColor ${generateRandomHexColor(sh.name, true)},${EOL}` +
           `${TAB}fillOpacity 0.7,${EOL}` +
