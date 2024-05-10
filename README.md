@@ -27,7 +27,8 @@ Tool designed to simplify the creation of web-based Geographic Information Syste
 ## Installation
 
 ```bash
-npm install -g @lbdudc/gis-publisher
+nvm use (optional, if you have nvm installed, otherwise just use node 19.x)
+npm install
 ```
 
 ## Configuration
@@ -120,7 +121,8 @@ npx gispublisher examples/hello-world
 {
   "deploy": {
     "type": "local"
-  }
+  },
+  "host": "http://localhost:80"
 }
 ```
 
@@ -135,7 +137,8 @@ npx gispublisher examples/hello-world
     "username": "username",
     "certRoute": "/path/to/your/cert.pem",
     "remoteRepoPath": "/path/to/remote/repo/code"
-  }
+  },
+  "host": "your-remote-host.com or IP"
 }
 ```
 
