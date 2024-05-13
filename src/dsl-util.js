@@ -72,6 +72,15 @@ export const createEntityScheme = (values) => {
 export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
   let mapSyntax = ``;
 
+  const GEOM_TYPES = {
+    Polygon: "Polygon",
+    LineString: "LineString",
+    Point: "Point",
+    MultiPolygon: "Polygon",
+    MultiLineString: "LineString",
+    MultiPoint: "Point",
+  };
+
   mapSyntax += `CREATE TILE LAYER base AS "OpenStreetMap" (${EOL}`;
   mapSyntax += `${TAB}url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"${EOL}`;
   mapSyntax += `);${EOL}${EOL}`;
@@ -90,7 +99,9 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
       } else {
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
-          `${TAB}geometryType ${geometryType.toUpperCase()},${EOL}` +
+          `${TAB}geometryType ${
+            GEOM_TYPES[geometryType].toUpperCase() || "Geometry"
+          },${EOL}` +
           `${TAB}fillColor ${generateRandomHexColor(sh.name)},${EOL}` +
           `${TAB}strokeColor ${generateRandomHexColor(sh.name, true)},${EOL}` +
           `${TAB}fillOpacity 0.7,${EOL}` +
