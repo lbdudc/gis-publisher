@@ -1,18 +1,13 @@
 {
   "platform": {
-    "codePath": "../lps/src/platform/code",
-    "featureModel": "../lps/src/platform/model.xml",
-    "config": "../lps/src/platform/config.json",
-    "extraJS": "../lps/src/platform/extra.js",
-    "modelTransformation": "../lps/src/platform/transformation.js"
+    "codePath": "../mini-lps/src/platform/code",
+    "featureModel": "../mini-lps/src/platform/model.xml",
+    "config": "../mini-lps/src/platform/config.json",
+    "extraJS": "../mini-lps/src/platform/extra.js",
+    "modelTransformation": "../mini-lps/src/platform/transformation.js"
   },
   "deploy": {
-    "type": "ssh",
-    "host": "compostela.lbd.org.es",
-    "port": 22222,
-    "username": "ci",
-    "certRoute": "/Users/acortinas/.ssh/id_ed25519",
-    "remoteRepoPath": "/home/ci/code"
+    "type": "local"
   },
-  "host": "http://gis.lbd.org.es"
+  "host": "http://localhost:80"
 }

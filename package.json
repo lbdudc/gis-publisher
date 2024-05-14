@@ -6,7 +6,7 @@
     "url": "git+https://github.com/lbdudc/gis-publisher.git"
   },
   "type": "module",
-  "version": "0.2.2",
+  "version": "1.0.0",
   "bin": {
     "gispublisher": "src/cli.js"
   },
@@ -14,11 +14,11 @@
     "node": ">=19.0.0"
   },
   "dependencies": {
-    "code-uploader": "@lbdudc/gp-code-uploader",
-    "gis-dsl": "@lbdudc/gp-gis-dsl",
+    "@lbdudc/gp-code-uploader": "^1.1.2",
+    "@lbdudc/gp-gis-dsl": "^0.2.2",
+    "@lbdudc/gp-shapefile-reader": "^1.1.1",
     "giscatalog-client": "git+https://gitlab.lbd.org.es/GEMA/lps/gispublisher/giscatalog-client.git",
     "meow": "^12.0.1",
-    "shapefile-reader": "@lbdudc/gp-shapedile-reader",
     "spl-js-engine": "^4.0.3"
   },
   "devDependencies": {

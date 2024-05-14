@@ -27,7 +27,8 @@ Tool designed to simplify the creation of web-based Geographic Information Syste
 ## Installation
 
 ```bash
-npm install -g @lbdudc/gis-publisher
+nvm use (optional, if you have nvm installed, otherwise just use node 19.x)
+npm install
 ```
 
 ## Configuration
@@ -46,9 +47,23 @@ npm install -g @lbdudc/gis-publisher
 }
 ```
 
+Also, if you can customize the features selected in your feature model adding a "features" key in the `config.json` file. For example:
+
+```json
+{
+  ...
+  "features": [
+    "feature1",
+    "feature2"
+  ],
+}
+```
+
 - Change the `config.json` file to match your needs. Choosing the type of deployment (local, ssh or aws) and the necessary parameters for each one. You can find more information about the configuration in the [Changing the config.json](#changing-the-configjson) section.
 
 - Add your shapefiles in a folder. The tool accepts shapefiles with the following extensions: `.shp`, `.shx`, `.dbf`, `.prj`, `.cpg` and `.sld`. Also accepts `.zip` files containing the shapefiles.
+
+!WARNING!: The geometries must be in EPSG:4326 projection!, and the geometries of Polygon and LineString must be MultiPolygon and MultiLineString respectively.
 
 ## Usage
 
@@ -108,7 +123,8 @@ npx gispublisher examples/hello-world
 {
   "deploy": {
     "type": "local"
-  }
+  },
+  "host": "http://localhost:80"
 }
 ```
 
@@ -123,7 +139,8 @@ npx gispublisher examples/hello-world
     "username": "username",
     "certRoute": "/path/to/your/cert.pem",
     "remoteRepoPath": "/path/to/remote/repo/code"
-  }
+  },
+  "host": "your-remote-host.com or IP"
 }
 ```
 

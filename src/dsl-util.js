@@ -1,4 +1,5 @@
 import { upperCamelCase, lowerCamelCase } from "./str-util.js";
+import { generateRandomHexColor } from "./color-util.js";
 
 const TAB = "  ";
 const EOL = "\n";
@@ -78,18 +79,44 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
   mapSyntax += shapefileInfo
     .map((sh) => {
       console.log(sh);
-      return (
-        `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
-        `${TAB}styleLayerDescriptor "${shapefilesFolder}${sh.name}.sld"${EOL}` +
-        `);${EOL}${EOL}` +
+      let sentence = "";
+      const geometryType = sh.schema.find((s) => s.name === "geometry").type;
+
+      // We use this custom geom so that the annotated code can apply the correct styles,
+      // only for the custom styles
+      const CUSTOM_GEOM = {
+        MultiLineString: "LineString",
+        MultiPolygon: "Polygon",
+        MultiPoint: "Point",
+      };
+
+      if (sh.hasSld) {
+        sentence +=
+          `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
+          `${TAB}styleLayerDescriptor "${shapefilesFolder}${sh.name}.sld"${EOL}` +
+          `);${EOL}${EOL}`;
+      } else {
+        sentence +=
+          `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
+          `${TAB}geometryType ${
+            CUSTOM_GEOM[geometryType] || geometryType
+          },${EOL}` +
+          `${TAB}fillColor ${generateRandomHexColor(sh.name)},${EOL}` +
+          `${TAB}strokeColor ${generateRandomHexColor(sh.name, true)},${EOL}` +
+          `${TAB}fillOpacity 0.7,${EOL}` +
+          `${TAB}strokeOpacity 1${EOL}` +
+          `);${EOL}${EOL}`;
+      }
+      sentence +=
         `CREATE WMS LAYER ${lowerCamelCase(sh.name)}Layer AS "${
           sh.name
         }" (${EOL}` +
         `${TAB}${upperCamelCase(sh.name)} ${lowerCamelCase(
           sh.name
         )}LayerStyle${EOL}` +
-        `);${EOL}`
-      );
+        `);${EOL}${EOL}`;
+
+      return sentence;
     })
     .join(EOL);
 
