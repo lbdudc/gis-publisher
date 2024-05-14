@@ -63,6 +63,8 @@ Also, if you can customize the features selected in your feature model adding a 
 
 - Add your shapefiles in a folder. The tool accepts shapefiles with the following extensions: `.shp`, `.shx`, `.dbf`, `.prj`, `.cpg` and `.sld`. Also accepts `.zip` files containing the shapefiles.
 
+!WARNING!: The geometries must be in EPSG:4326 projection!, and the geometries of Polygon and LineString must be MultiPolygon and MultiLineString respectively.
+
 ## Usage
 
 ```bash

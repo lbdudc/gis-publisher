@@ -82,6 +82,14 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
       let sentence = "";
       const geometryType = sh.schema.find((s) => s.name === "geometry").type;
 
+      // We use this custom geom so that the annotated code can apply the correct styles,
+      // only for the custom styles
+      const CUSTOM_GEOM = {
+        MultiLineString: "LineString",
+        MultiPolygon: "Polygon",
+        MultiPoint: "Point",
+      };
+
       if (sh.hasSld) {
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
@@ -91,7 +99,7 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
           `${TAB}geometryType ${
-            geometryType.toUpperCase() || "GEOMETRY"
+            CUSTOM_GEOM[geometryType] || geometryType
           },${EOL}` +
           `${TAB}fillColor ${generateRandomHexColor(sh.name)},${EOL}` +
           `${TAB}strokeColor ${generateRandomHexColor(sh.name, true)},${EOL}` +
