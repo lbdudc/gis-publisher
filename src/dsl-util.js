@@ -91,7 +91,7 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
       let sentence = "";
       const geometryType = sh.schema.find((s) => s.name === "geometry").type;
 
-      if (sh.hasDsl) {
+      if (sh.hasSld) {
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
           `${TAB}styleLayerDescriptor "${shapefilesFolder}${sh.name}.sld"${EOL}` +
