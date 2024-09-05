@@ -5,7 +5,7 @@ import {
   AWSUploadStrategy,
   LocalUploadStrategy,
 } from "@lbdudc/gp-code-uploader";
-import { SearchAPIClient } from "giscatalog-client";
+// import { SearchAPIClient } from "giscatalog-client";
 import Processor from "@lbdudc/gp-shapefile-reader";
 import path from "path";
 import {
@@ -33,9 +33,9 @@ export default class GISPublisher {
       await uploadShapefiles(shapefilesFolder, this.config.host);
       return;
     }
-    if (DEBUG) {
-      console.log(SearchAPIClient);
-    }
+    // if (DEBUG) {
+    //   console.log(SearchAPIClient);
+    // }
 
     // Create a new instance of the processor
     const processor = new Processor({
