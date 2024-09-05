@@ -1,7 +1,7 @@
 # GisPublisher
 
 <div style="display:flex; margin-bottom: 20px;">
-  <img src="https://badge.fury.io/js/%40lbdudc%2Fgis-publisher.svg?&style=flat-square" alt="npm version">
+  <img src="https://img.shields.io/npm/v/@lbdudc/gis-publisher?&style=flat-square" alt="npm version">
   <img src="https://img.shields.io/badge/License-MIT-yellow.svg?&style=flat-square" alt="License: MIT">
   <img src="https://img.shields.io/node/v/@lbdudc/gis-publisher?&style=flat-square" alt="Node.js Version">
 </div>
