@@ -43,7 +43,6 @@ export default class GISPublisher {
       geographicInfo: false, // true by default
       records: false, // true by default
     });
-    const shapefilesInfo = await processor.processFolder(shapefilesFolder);
 
     // const client = new SearchAPIClient({
     //   catalogURI: 'https://demo.pygeoapi.io/master',
@@ -52,17 +51,42 @@ export default class GISPublisher {
     // const collections = await client.search();
     // console.log(collections);
 
-    let dslInstance =
-      createBaseDSLInstance("test", this.config.deploy.type == "local") +
-      createEntityScheme(shapefilesInfo) +
-      createMapFromEntity(shapefilesInfo, shapefilesFolder) +
-      endDSLInstance("test");
+    let dslInstances = "";
+    let rootFilesProcessed = false;
 
-    if (DEBUG) {
-      fs.writeFileSync("spec.dsl", dslInstance, "utf-8");
+    // Read files in the shapefiles folder
+    const entries = fs.readdirSync(shapefilesFolder, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const entryPath = path.join(shapefilesFolder, entry.name);
+      if (entry.isDirectory()) {
+        // Process the shapefiles in the subfolder
+        const shapefilesInfo = await processor.processFolder(entryPath);
+        dslInstances +=
+          createBaseDSLInstance(
+            entry.name,
+            this.config.deploy.type == "local"
+          ) +
+          createEntityScheme(shapefilesInfo) +
+          createMapFromEntity(shapefilesInfo, entryPath) +
+          endDSLInstance(entry.name);
+      } else if (!rootFilesProcessed) {
+        // Process the shapefiles in the root folder if not processed yet
+        const shapefilesInfo = await processor.processFolder(shapefilesFolder);
+        dslInstances +=
+          createBaseDSLInstance("default", this.config.deploy.type == "local") +
+          createEntityScheme(shapefilesInfo) +
+          createMapFromEntity(shapefilesInfo, shapefilesFolder) +
+          endDSLInstance("default");
+        rootFilesProcessed = true;
+      }
     }
 
-    const json = gisdslParser(dslInstance);
+    if (DEBUG) {
+      fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
+    }
+
+    const json = gisdslParser(dslInstances);
 
     // Set custom feature selection
     if (this.config.features && this.config.features.length > 0) {

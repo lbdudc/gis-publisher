@@ -1,5 +1,6 @@
 import { upperCamelCase, lowerCamelCase } from "./str-util.js";
 import { generateRandomHexColor } from "./color-util.js";
+import path from "path";
 
 const TAB = "  ";
 const EOL = "\n";
@@ -93,7 +94,10 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
       if (sh.hasSld) {
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
-          `${TAB}styleLayerDescriptor "${shapefilesFolder}${sh.name}.sld"${EOL}` +
+          `${TAB}styleLayerDescriptor "${path.join(
+            shapefilesFolder,
+            sh.name + ".sld"
+          )}"${EOL}` +
           `);${EOL}${EOL}`;
       } else {
         sentence +=
