@@ -89,7 +89,7 @@ gispublisher shapefilesFolder [--generate] [--config path] [--only-import] [--bb
 We provide some examples in the `examples` folder. You can use them to test the tool.
 
 ```bash
-gispublisher examples/hello-world
+gispublisher examples/hello_world
 
 gispublisher examples/WaterSupply
 ```
@@ -109,7 +109,7 @@ npm run prepare
 npx gispublisher args
 
 # for example
-npx gispublisher examples/hello-world
+npx gispublisher examples/hello_world
 ```
 
 ## Changing the config.json
