@@ -70,7 +70,11 @@ export const createEntityScheme = (values) => {
   return schemaSyntax;
 };
 
-export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
+export function createMapFromEntity(
+  shapefileInfo,
+  shapefilesFolder,
+  mapName = "default"
+) {
   let mapSyntax = ``;
 
   mapSyntax += `CREATE TILE LAYER base AS "OpenStreetMap" (${EOL}`;
@@ -124,7 +128,7 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
     })
     .join(EOL);
 
-  mapSyntax += `CREATE MAP main AS "Map" (${EOL}`;
+  mapSyntax += `CREATE MAP ${mapName} AS "${mapName}" (${EOL}`;
   mapSyntax += `${TAB}base IS_BASE_LAYER,${EOL}`;
   mapSyntax += shapefileInfo
     .map((sh) => {

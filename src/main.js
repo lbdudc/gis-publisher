@@ -68,7 +68,7 @@ export default class GISPublisher {
             this.config.deploy.type == "local"
           ) +
           createEntityScheme(shapefilesInfo) +
-          createMapFromEntity(shapefilesInfo, entryPath) +
+          createMapFromEntity(shapefilesInfo, entryPath, entry.name) +
           endDSLInstance(entry.name);
       } else if (!rootFilesProcessed) {
         // Process the shapefiles in the root folder if not processed yet
@@ -76,7 +76,7 @@ export default class GISPublisher {
         dslInstances +=
           createBaseDSLInstance("default", this.config.deploy.type == "local") +
           createEntityScheme(shapefilesInfo) +
-          createMapFromEntity(shapefilesInfo, shapefilesFolder) +
+          createMapFromEntity(shapefilesInfo, shapefilesFolder, "default") +
           endDSLInstance("default");
         rootFilesProcessed = true;
       }
