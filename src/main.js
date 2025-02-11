@@ -54,6 +54,12 @@ export default class GISPublisher {
     let dslInstances = "";
     const entries = fs.readdirSync(shapefilesFolder, { withFileTypes: true });
 
+    // Initialize DSL instance
+    dslInstances += createBaseDSLInstance(
+      "default",
+      this.config.deploy.type == "local"
+    );
+
     // Process the root folder only if it contains shapefiles
     if (entries.filter((item) => item.isFile()).length > 0) {
       const rootShapefilesInfo = await processor.processFolder(
@@ -61,10 +67,8 @@ export default class GISPublisher {
       );
       if (rootShapefilesInfo.length > 0) {
         dslInstances +=
-          createBaseDSLInstance("default", this.config.deploy.type == "local") +
           createEntityScheme(rootShapefilesInfo) +
-          createMapFromEntity(rootShapefilesInfo, shapefilesFolder, "default") +
-          endDSLInstance("default");
+          createMapFromEntity(rootShapefilesInfo, shapefilesFolder, "default");
       }
     }
 
@@ -76,16 +80,14 @@ export default class GISPublisher {
         const shapefilesInfo = await processor.processFolder(entryPath);
         if (shapefilesInfo.length > 0) {
           dslInstances +=
-            createBaseDSLInstance(
-              entry.name,
-              this.config.deploy.type == "local"
-            ) +
             createEntityScheme(shapefilesInfo) +
-            createMapFromEntity(shapefilesInfo, entryPath, entry.name) +
-            endDSLInstance(entry.name);
+            createMapFromEntity(shapefilesInfo, entryPath, entry.name);
         }
       }
     }
+
+    // Finalize DSL instance
+    dslInstances += endDSLInstance("default");
 
     if (DEBUG) {
       fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
