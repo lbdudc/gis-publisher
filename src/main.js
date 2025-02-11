@@ -52,33 +52,38 @@ export default class GISPublisher {
     // console.log(collections);
 
     let dslInstances = "";
-    let rootFilesProcessed = false;
-
-    // Read files in the shapefiles folder
     const entries = fs.readdirSync(shapefilesFolder, { withFileTypes: true });
 
+    // Process the root folder only if it contains shapefiles
+    if (entries.filter((item) => item.isFile()).length > 0) {
+      const rootShapefilesInfo = await processor.processFolder(
+        shapefilesFolder
+      );
+      if (rootShapefilesInfo.length > 0) {
+        dslInstances +=
+          createBaseDSLInstance("default", this.config.deploy.type == "local") +
+          createEntityScheme(rootShapefilesInfo) +
+          createMapFromEntity(rootShapefilesInfo, shapefilesFolder, "default") +
+          endDSLInstance("default");
+      }
+    }
+
+    // Process the subfolders
     for (const entry of entries) {
       const entryPath = path.join(shapefilesFolder, entry.name);
       if (entry.isDirectory()) {
-        // Process the shapefiles in the subfolder
+        // Process shapefiles inside the subfolder
         const shapefilesInfo = await processor.processFolder(entryPath);
-        dslInstances +=
-          createBaseDSLInstance(
-            entry.name,
-            this.config.deploy.type == "local"
-          ) +
-          createEntityScheme(shapefilesInfo) +
-          createMapFromEntity(shapefilesInfo, entryPath, entry.name) +
-          endDSLInstance(entry.name);
-      } else if (!rootFilesProcessed) {
-        // Process the shapefiles in the root folder if not processed yet
-        const shapefilesInfo = await processor.processFolder(shapefilesFolder);
-        dslInstances +=
-          createBaseDSLInstance("default", this.config.deploy.type == "local") +
-          createEntityScheme(shapefilesInfo) +
-          createMapFromEntity(shapefilesInfo, shapefilesFolder, "default") +
-          endDSLInstance("default");
-        rootFilesProcessed = true;
+        if (shapefilesInfo.length > 0) {
+          dslInstances +=
+            createBaseDSLInstance(
+              entry.name,
+              this.config.deploy.type == "local"
+            ) +
+            createEntityScheme(shapefilesInfo) +
+            createMapFromEntity(shapefilesInfo, entryPath, entry.name) +
+            endDSLInstance(entry.name);
+        }
       }
     }
 
