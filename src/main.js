@@ -30,7 +30,9 @@ export default class GISPublisher {
     if (!shapefilesFolder.endsWith(path.sep)) shapefilesFolder += path.sep;
 
     if (onlyImport) {
-      await uploadShapefiles(shapefilesFolder, this.config.host);
+      await this.iterateDirectories(shapefilesFolder, async (entryPath) => {
+        await uploadShapefiles(entryPath, this.config.host);
+      });
       return;
     }
     // if (DEBUG) {
@@ -93,7 +95,9 @@ export default class GISPublisher {
 
     if (shouldDeploy) {
       await this.deploy();
-      await uploadShapefiles(shapefilesFolder, this.config.host);
+      await this.iterateDirectories(shapefilesFolder, async (entryPath) => {
+        await uploadShapefiles(entryPath, this.config.host);
+      });
     }
   }
 
