@@ -51,42 +51,20 @@ export default class GISPublisher {
     // const collections = await client.search();
     // console.log(collections);
 
-    let dslInstances = "";
-    const entries = fs.readdirSync(shapefilesFolder, { withFileTypes: true });
-
-    // Initialize DSL instance
-    dslInstances += createBaseDSLInstance(
+    let dslInstances = createBaseDSLInstance(
       "default",
       this.config.deploy.type == "local"
     );
 
-    // Process the root folder only if it contains shapefiles
-    if (entries.filter((item) => item.isFile()).length > 0) {
-      const rootShapefilesInfo = await processor.processFolder(
-        shapefilesFolder
-      );
-      if (rootShapefilesInfo.length > 0) {
+    await this.iterateDirectories(shapefilesFolder, async (entryPath, name) => {
+      const shapefilesInfo = await processor.processFolder(entryPath);
+      if (shapefilesInfo.length > 0) {
         dslInstances +=
-          createEntityScheme(rootShapefilesInfo) +
-          createMapFromEntity(rootShapefilesInfo, shapefilesFolder, "default");
+          createEntityScheme(shapefilesInfo) +
+          createMapFromEntity(shapefilesInfo, entryPath, name);
       }
-    }
+    });
 
-    // Process the subfolders
-    for (const entry of entries) {
-      const entryPath = path.join(shapefilesFolder, entry.name);
-      if (entry.isDirectory()) {
-        // Process shapefiles inside the subfolder
-        const shapefilesInfo = await processor.processFolder(entryPath);
-        if (shapefilesInfo.length > 0) {
-          dslInstances +=
-            createEntityScheme(shapefilesInfo) +
-            createMapFromEntity(shapefilesInfo, entryPath, entry.name);
-        }
-      }
-    }
-
-    // Finalize DSL instance
     dslInstances += endDSLInstance("default");
 
     if (DEBUG) {
@@ -116,6 +94,23 @@ export default class GISPublisher {
     if (shouldDeploy) {
       await this.deploy();
       await uploadShapefiles(shapefilesFolder, this.config.host);
+    }
+  }
+
+  async iterateDirectories(rootPath, callback) {
+    const entries = fs.readdirSync(rootPath, { withFileTypes: true });
+
+    // Process the root directory if it contains files
+    if (entries.some((item) => item.isFile())) {
+      await callback(rootPath, "default");
+    }
+
+    // Process subdirectories
+    for (const entry of entries) {
+      const entryPath = path.join(rootPath, entry.name);
+      if (entry.isDirectory()) {
+        await callback(entryPath, entry.name);
+      }
     }
   }
 
