@@ -77,6 +77,8 @@ export function createMapFromEntity(
 ) {
   let mapSyntax = ``;
 
+  const geometryColumn = ["geometry", "geom"];
+
   mapSyntax += `CREATE TILE LAYER base AS "OpenStreetMap" (${EOL}`;
   mapSyntax += `${TAB}url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"${EOL}`;
   mapSyntax += `);${EOL}${EOL}`;
@@ -85,7 +87,9 @@ export function createMapFromEntity(
     .map((sh) => {
       console.log(sh);
       let sentence = "";
-      const geometryType = sh.schema.find((s) => s.name === "geometry").type;
+      const geometryType = sh.schema.find((s) =>
+        geometryColumn.includes(s.name)
+      ).type;
 
       // We use this custom geom so that the annotated code can apply the correct styles,
       // only for the custom styles

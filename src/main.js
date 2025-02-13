@@ -17,7 +17,7 @@ import {
 import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 
-import { uploadShapefiles } from "./shp-importer.js";
+import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
 const DEBUG = process.env.DEBUG;
 
@@ -26,13 +26,17 @@ export default class GISPublisher {
     this.config = config;
   }
 
-  async run(shapefilesFolder, bbox, shouldDeploy, onlyImport) {
-    if (!shapefilesFolder.endsWith(path.sep)) shapefilesFolder += path.sep;
+  async run(geographicFilesFolder, bbox, shouldDeploy, onlyImport) {
+    if (!geographicFilesFolder.endsWith(path.sep))
+      geographicFilesFolder += path.sep;
 
     if (onlyImport) {
-      await this.iterateDirectories(shapefilesFolder, async (entryPath) => {
-        await uploadShapefiles(entryPath, this.config.host);
-      });
+      await this.iterateDirectories(
+        geographicFilesFolder,
+        async (entryPath) => {
+          await uploadGeographicFiles(entryPath, this.config.host);
+        }
+      );
       return;
     }
     // if (DEBUG) {
@@ -58,14 +62,17 @@ export default class GISPublisher {
       this.config.deploy.type == "local"
     );
 
-    await this.iterateDirectories(shapefilesFolder, async (entryPath, name) => {
-      const shapefilesInfo = await processor.processFolder(entryPath);
-      if (shapefilesInfo.length > 0) {
-        dslInstances +=
-          createEntityScheme(shapefilesInfo) +
-          createMapFromEntity(shapefilesInfo, entryPath, name);
+    await this.iterateDirectories(
+      geographicFilesFolder,
+      async (entryPath, name) => {
+        const geographicFilesInfo = await processor.processFolder(entryPath);
+        if (geographicFilesInfo.length > 0) {
+          dslInstances +=
+            createEntityScheme(geographicFilesInfo) +
+            createMapFromEntity(geographicFilesInfo, entryPath, name);
+        }
       }
-    });
+    );
 
     dslInstances += endDSLInstance("default");
 
@@ -95,9 +102,12 @@ export default class GISPublisher {
 
     if (shouldDeploy) {
       await this.deploy();
-      await this.iterateDirectories(shapefilesFolder, async (entryPath) => {
-        await uploadShapefiles(entryPath, this.config.host);
-      });
+      await this.iterateDirectories(
+        geographicFilesFolder,
+        async (entryPath) => {
+          await uploadGeographicFiles(entryPath, this.config.host);
+        }
+      );
     }
   }
 
