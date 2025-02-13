@@ -17,7 +17,7 @@ import {
 import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 
-import { uploadShapefiles } from "./shp-importer.js";
+import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
 const DEBUG = process.env.DEBUG;
 
@@ -26,11 +26,17 @@ export default class GISPublisher {
     this.config = config;
   }
 
-  async run(shapefilesFolder, bbox, shouldDeploy, onlyImport) {
-    if (!shapefilesFolder.endsWith(path.sep)) shapefilesFolder += path.sep;
+  async run(geographicFilesFolder, bbox, shouldDeploy, onlyImport) {
+    if (!geographicFilesFolder.endsWith(path.sep))
+      geographicFilesFolder += path.sep;
 
     if (onlyImport) {
-      await uploadShapefiles(shapefilesFolder, this.config.host);
+      await this.iterateDirectories(
+        geographicFilesFolder,
+        async (entryPath) => {
+          await uploadGeographicFiles(entryPath, this.config.host);
+        }
+      );
       return;
     }
     // if (DEBUG) {
@@ -43,7 +49,6 @@ export default class GISPublisher {
       geographicInfo: false, // true by default
       records: false, // true by default
     });
-    const shapefilesInfo = await processor.processFolder(shapefilesFolder);
 
     // const client = new SearchAPIClient({
     //   catalogURI: 'https://demo.pygeoapi.io/master',
@@ -52,17 +57,30 @@ export default class GISPublisher {
     // const collections = await client.search();
     // console.log(collections);
 
-    let dslInstance =
-      createBaseDSLInstance("test", this.config.deploy.type == "local") +
-      createEntityScheme(shapefilesInfo) +
-      createMapFromEntity(shapefilesInfo, shapefilesFolder) +
-      endDSLInstance("test");
+    let dslInstances = createBaseDSLInstance(
+      "default",
+      this.config.deploy.type == "local"
+    );
+
+    await this.iterateDirectories(
+      geographicFilesFolder,
+      async (entryPath, name) => {
+        const geographicFilesInfo = await processor.processFolder(entryPath);
+        if (geographicFilesInfo.length > 0) {
+          dslInstances +=
+            createEntityScheme(geographicFilesInfo) +
+            createMapFromEntity(geographicFilesInfo, entryPath, name);
+        }
+      }
+    );
+
+    dslInstances += endDSLInstance("default");
 
     if (DEBUG) {
-      fs.writeFileSync("spec.dsl", dslInstance, "utf-8");
+      fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
     }
 
-    const json = gisdslParser(dslInstance);
+    const json = gisdslParser(dslInstances);
 
     // Set custom feature selection
     if (this.config.features && this.config.features.length > 0) {
@@ -84,7 +102,29 @@ export default class GISPublisher {
 
     if (shouldDeploy) {
       await this.deploy();
-      await uploadShapefiles(shapefilesFolder, this.config.host);
+      await this.iterateDirectories(
+        geographicFilesFolder,
+        async (entryPath) => {
+          await uploadGeographicFiles(entryPath, this.config.host);
+        }
+      );
+    }
+  }
+
+  async iterateDirectories(rootPath, callback) {
+    const entries = fs.readdirSync(rootPath, { withFileTypes: true });
+
+    // Process the root directory if it contains files
+    if (entries.some((item) => item.isFile())) {
+      await callback(rootPath, "default");
+    }
+
+    // Process subdirectories
+    for (const entry of entries) {
+      const entryPath = path.join(rootPath, entry.name);
+      if (entry.isDirectory()) {
+        await callback(entryPath, entry.name);
+      }
     }
   }
 

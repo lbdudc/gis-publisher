@@ -5,30 +5,30 @@ import { lowerCamelCase, upperCamelCase } from "./str-util.js";
 
 const DEBUG = process.env.DEBUG;
 
-export async function uploadShapefiles(shapefilesFolder, host) {
-  console.info("Starting the import of shapefiles");
+export async function uploadGeographicFiles(geographicFilesFolder, host) {
+  console.info("Starting the import of geographic files");
 
-  // Fist, we wait for the server to be running to send the shapefiles
+  // Fist, we wait for the server to be running to send the geographicFiles
   await _waitForServer(host);
 
   /* Secondly, we get all the entities from the server to create the mapping between
-    the shapefiles' columns and the entities' attributes */
+    the geographic files' columns and the entities' attributes */
   const entities = await _getEntities(host);
   if (DEBUG) {
     console.log(entities);
   }
 
   /*
-  Next, we do the following: we obtain the name of the entity from the name of the ZIP file
-    that contains the shapefiles. Then, we upload that ZIP file to the server to create
-    a temporary file and extract the attributes of the shapefile.
+  Next, we do the following: we obtain the name of the entity from the name of the geographic file.
+    Then, we upload that file to the server to create
+    a temporary file and extract the attributes.
     Once all this information is obtained, we map the attributes and send a request
     to the server to load the data into the database.
    */
   if (DEBUG) {
-    console.log(shapefilesFolder);
+    console.log(geographicFilesFolder);
   }
-  const zipFiles = _getShapefiles(shapefilesFolder);
+  const zipFiles = _getGeographicFiles(geographicFilesFolder);
   if (DEBUG) {
     console.log(zipFiles);
   }
@@ -38,13 +38,13 @@ export async function uploadShapefiles(shapefilesFolder, host) {
       entity.name.endsWith(_fileNameToEntityName(zipFile))
     );
     // We upload a temporary file to the server, and we get returned the attributes
-    const response = await _uploadTempShapefile(
+    const response = await _uploadTempGeographicFile(
       host,
-      shapefilesFolder,
+      geographicFilesFolder,
       zipFile
     );
     console.info(`Uploading data to the entity ${entity.name} from ${zipFile}`);
-    await _uploadShapefileData(
+    await _uploadGeographicFileData(
       host,
       response.temporaryFile,
       response.values,
@@ -52,7 +52,7 @@ export async function uploadShapefiles(shapefilesFolder, host) {
     );
     await _restartBBox(host, entity);
   }
-  console.info("The import of Shapefiles has finished");
+  console.info("The import of geographic files has finished");
 }
 
 async function _getEntities(host) {
@@ -62,23 +62,27 @@ async function _getEntities(host) {
   return await fetch(`${host}/backend/api/entities`).then((res) => res.json());
 }
 
-async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
+async function _uploadTempGeographicFile(
+  host,
+  geographicFilesFolder,
+  geographicFileName
+) {
   const formData = new FormData();
-  formData.append("type", "shapefile");
+  formData.append("type", "geographicFile");
   formData.append("encoding", "utf-8");
   if (DEBUG) {
     console.log(
-      `${shapefilesFolder.replace(/\\$/, "")}${path.sep}output${
+      `${geographicFilesFolder.replace(/\\$/, "")}${path.sep}output${
         path.sep
-      }${shapefileName}`
+      }${geographicFileName}`
     );
   }
   const file = fs.readFileSync(
-    `${shapefilesFolder.replace(/\\$/, "")}${path.sep}output${
+    `${geographicFilesFolder.replace(/\\$/, "")}${path.sep}output${
       path.sep
-    }${shapefileName}`
+    }${geographicFileName}`
   );
-  const fileObj = new File([new Blob([file])], shapefileName, {
+  const fileObj = new File([new Blob([file])], geographicFileName, {
     type: "application/x-zip-compressed",
   });
   formData.append("file", fileObj);
@@ -92,7 +96,7 @@ async function _uploadTempShapefile(host, shapefilesFolder, shapefileName) {
     }
     return await response.json();
   } catch (err) {
-    console.error(`Error uploading shapefile ${shapefileName}`, err);
+    console.error(`Error uploading geographic file ${geographicFileName}`, err);
     throw err;
   }
 }
@@ -116,21 +120,21 @@ async function _waitForServer(host) {
   }
 }
 
-function _getShapefiles(shapefilesFolder) {
+function _getGeographicFiles(geographicFilesFolder) {
   return fs
-    .readdirSync(shapefilesFolder + "/output")
+    .readdirSync(geographicFilesFolder + "/output")
     .filter((fName) => fName.indexOf(".zip") !== -1)
     .filter((fName) => fName != ".zip");
 }
 
-async function _uploadShapefileData(
+async function _uploadGeographicFileData(
   host,
-  tmpShapefile,
-  shapefileAttrs,
+  tmpGeographicFile,
+  geographicFileAttrs,
   entity
 ) {
   const data = {
-    columns: shapefileAttrs.map((attr) => {
+    columns: geographicFileAttrs.map((attr) => {
       // The geometry has always the name "Geometry" in the DB
       if (attr.toLowerCase().indexOf("geom") !== -1) {
         return entity.properties.find(
@@ -143,9 +147,9 @@ async function _uploadShapefileData(
     }),
     encoding: "utf-8",
     entityName: entity.name,
-    file: tmpShapefile,
-    ncolumns: shapefileAttrs.length,
-    type: "shapefile",
+    file: tmpGeographicFile,
+    ncolumns: geographicFileAttrs.length,
+    type: "geographicFile",
   };
   if (DEBUG) {
     console.log(data);

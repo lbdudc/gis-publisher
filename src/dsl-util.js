@@ -1,5 +1,6 @@
 import { upperCamelCase, lowerCamelCase } from "./str-util.js";
 import { generateRandomHexColor } from "./color-util.js";
+import path from "path";
 
 const TAB = "  ";
 const EOL = "\n";
@@ -69,8 +70,14 @@ export const createEntityScheme = (values) => {
   return schemaSyntax;
 };
 
-export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
+export function createMapFromEntity(
+  shapefileInfo,
+  shapefilesFolder,
+  mapName = "default"
+) {
   let mapSyntax = ``;
+
+  const geometryColumn = ["geometry", "geom"];
 
   mapSyntax += `CREATE TILE LAYER base AS "OpenStreetMap" (${EOL}`;
   mapSyntax += `${TAB}url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"${EOL}`;
@@ -80,7 +87,9 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
     .map((sh) => {
       console.log(sh);
       let sentence = "";
-      const geometryType = sh.schema.find((s) => s.name === "geometry").type;
+      const geometryType = sh.schema.find((s) =>
+        geometryColumn.includes(s.name)
+      ).type;
 
       // We use this custom geom so that the annotated code can apply the correct styles,
       // only for the custom styles
@@ -93,7 +102,10 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
       if (sh.hasSld) {
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
-          `${TAB}styleLayerDescriptor "${shapefilesFolder}${sh.name}.sld"${EOL}` +
+          `${TAB}styleLayerDescriptor "${path.join(
+            shapefilesFolder,
+            sh.name + ".sld"
+          )}"${EOL}` +
           `);${EOL}${EOL}`;
       } else {
         sentence +=
@@ -120,7 +132,7 @@ export function createMapFromEntity(shapefileInfo, shapefilesFolder) {
     })
     .join(EOL);
 
-  mapSyntax += `CREATE MAP main AS "Map" (${EOL}`;
+  mapSyntax += `CREATE MAP ${mapName} AS "${mapName}" (${EOL}`;
   mapSyntax += `${TAB}base IS_BASE_LAYER,${EOL}`;
   mapSyntax += shapefileInfo
     .map((sh) => {
