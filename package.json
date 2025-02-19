@@ -18,7 +18,8 @@
     "@lbdudc/gp-gis-dsl": "^0.2.5",
     "@lbdudc/gp-shapefile-reader": "^1.1.4",
     "meow": "^12.0.1",
-    "spl-js-engine": "^4.0.3"
+    "spl-js-engine": "^4.0.3",
+    "mime": "^4.0.6"
   },
   "devDependencies": {
     "eslint": "^8.40.0",

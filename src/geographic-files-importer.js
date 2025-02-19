@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Blob, File } from "buffer";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
+import mime from "mime";
 
 const DEBUG = process.env.DEBUG;
 
@@ -83,7 +84,7 @@ async function _uploadTempGeographicFile(
     }${geographicFileName}`
   );
   const fileObj = new File([new Blob([file])], geographicFileName, {
-    type: "application/x-zip-compressed",
+    type: mime.getType(geographicFileName),
   });
   formData.append("file", fileObj);
   try {
