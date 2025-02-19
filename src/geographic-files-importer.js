@@ -68,8 +68,16 @@ async function _uploadTempGeographicFile(
   geographicFilesFolder,
   geographicFileName
 ) {
+  const extension = path.extname(geographicFileName).toLowerCase();
+  const fileType =
+    extension === ".zip"
+      ? "shapefile"
+      : extension === ".gpkg"
+      ? "geopackage"
+      : "geographicFile";
+
   const formData = new FormData();
-  formData.append("type", "geographicFile");
+  formData.append("type", fileType);
   formData.append("encoding", "utf-8");
   if (DEBUG) {
     console.log(
