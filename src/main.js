@@ -30,13 +30,12 @@ export default class GISPublisher {
     if (!geographicFilesFolder.endsWith(path.sep))
       geographicFilesFolder += path.sep;
 
+    const directories = this.getDirectories(geographicFilesFolder);
+
     if (onlyImport) {
-      await this.iterateDirectories(
-        geographicFilesFolder,
-        async (entryPath) => {
-          await uploadGeographicFiles(entryPath, this.config.host);
-        }
-      );
+      for (const entryPath of directories) {
+        await uploadGeographicFiles(entryPath, this.config.host);
+      }
       return;
     }
     // if (DEBUG) {
@@ -62,17 +61,18 @@ export default class GISPublisher {
       this.config.deploy.type == "local"
     );
 
-    await this.iterateDirectories(
-      geographicFilesFolder,
-      async (entryPath, name) => {
-        const geographicFilesInfo = await processor.processFolder(entryPath);
-        if (geographicFilesInfo.length > 0) {
-          dslInstances +=
-            createEntityScheme(geographicFilesInfo) +
-            createMapFromEntity(geographicFilesInfo, entryPath, name);
-        }
+    for (const entryPath of directories) {
+      const geographicFilesInfo = await processor.processFolder(entryPath);
+      if (geographicFilesInfo.length > 0) {
+        dslInstances +=
+          createEntityScheme(geographicFilesInfo) +
+          createMapFromEntity(
+            geographicFilesInfo,
+            entryPath,
+            path.basename(entryPath)
+          );
       }
-    );
+    }
 
     dslInstances += endDSLInstance("default");
 
@@ -102,30 +102,29 @@ export default class GISPublisher {
 
     if (shouldDeploy) {
       await this.deploy();
-      await this.iterateDirectories(
-        geographicFilesFolder,
-        async (entryPath) => {
-          await uploadGeographicFiles(entryPath, this.config.host);
-        }
-      );
+      for (const entryPath of directories) {
+        await uploadGeographicFiles(entryPath, this.config.host);
+      }
     }
   }
 
-  async iterateDirectories(rootPath, callback) {
+  getDirectories(rootPath) {
     const entries = fs.readdirSync(rootPath, { withFileTypes: true });
+    let directories = [];
 
-    // Process the root directory if it contains files
-    if (entries.some((item) => item.isFile())) {
-      await callback(rootPath, "default");
+    // Include root directory if it contains files
+    if (entries.some((entry) => entry.isFile())) {
+      directories.push(rootPath);
     }
 
-    // Process subdirectories
-    for (const entry of entries) {
-      const entryPath = path.join(rootPath, entry.name);
-      if (entry.isDirectory()) {
-        await callback(entryPath, entry.name);
-      }
-    }
+    // Include subdirectories (excluding "output")
+    directories.push(
+      ...entries
+        .filter((entry) => entry.isDirectory() && entry.name !== "output")
+        .map((entry) => path.join(rootPath, entry.name))
+    );
+
+    return directories;
   }
 
   async deploy() {
