@@ -18,6 +18,7 @@
     "@lbdudc/gp-gis-dsl": "^0.2.5",
     "@lbdudc/gp-shapefile-reader": "^1.1.4",
     "meow": "^12.0.1",
+    "mime": "^4.0.6",
     "spl-js-engine": "^4.0.3"
   },
   "devDependencies": {

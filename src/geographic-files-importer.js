@@ -2,6 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Blob, File } from "buffer";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
+import mime from "mime";
 
 const DEBUG = process.env.DEBUG;
 
@@ -67,8 +68,16 @@ async function _uploadTempGeographicFile(
   geographicFilesFolder,
   geographicFileName
 ) {
+  const EXTENSION_FILE_TYPE_MAPPING = {
+    ".zip": "shapefile",
+    ".gpkg": "geoPackage",
+  };
+
+  const extension = path.extname(geographicFileName).toLowerCase();
+  const fileType = EXTENSION_FILE_TYPE_MAPPING[extension];
+
   const formData = new FormData();
-  formData.append("type", "geographicFile");
+  formData.append("type", fileType);
   formData.append("encoding", "utf-8");
   if (DEBUG) {
     console.log(
@@ -83,7 +92,7 @@ async function _uploadTempGeographicFile(
     }${geographicFileName}`
   );
   const fileObj = new File([new Blob([file])], geographicFileName, {
-    type: "application/x-zip-compressed",
+    type: mime.getType(geographicFileName),
   });
   formData.append("file", fileObj);
   try {
