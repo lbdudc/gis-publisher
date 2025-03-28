@@ -1,8 +1,8 @@
 import fs from "fs";
 import path from "path";
-import { Blob, File } from "buffer";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
 import mime from "mime";
+import { _waitForServer } from "./waitForServer.js";
 
 const DEBUG = process.env.DEBUG;
 
@@ -107,25 +107,6 @@ async function _uploadTempGeographicFile(
   } catch (err) {
     console.error(`Error uploading geographic file ${geographicFileName}`, err);
     throw err;
-  }
-}
-
-async function _waitForServer(host) {
-  let isServerRunning = false;
-  while (!isServerRunning) {
-    try {
-      const response = await fetch(`${host}/backend`);
-      if (response.status != 502) {
-        isServerRunning = true;
-      } else {
-        console.info("Server not available. Retrying connection...");
-        await new Promise((r) => setTimeout(r, 5000));
-      }
-    } catch (e) {
-      console.info("Server not available. Retrying connection...");
-      // Waiting 5 seconds to retry
-      await new Promise((r) => setTimeout(r, 5000));
-    }
   }
 }
 

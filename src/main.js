@@ -6,7 +6,7 @@ import {
   LocalUploadStrategy,
 } from "@lbdudc/gp-code-uploader";
 // import { SearchAPIClient } from "giscatalog-client";
-import Processor from "@lbdudc/gp-shapefile-reader";
+import Processor from "@lbdudc/gp-geographic-info-reader";
 import path from "path";
 import {
   createEntityScheme,
@@ -18,7 +18,7 @@ import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
-
+import { geotiffImporter } from "./geotiff-importer.js";
 const DEBUG = process.env.DEBUG;
 
 export default class GISPublisher {
@@ -60,14 +60,23 @@ export default class GISPublisher {
       "default",
       this.config.deploy.type == "local"
     );
+    let geographicFilesInfo = [],
+      exceptGeotiffFilesInfo = [],
+      geotiffFilesInfo = [];
 
     for (const entryPath of directories) {
-      const geographicFilesInfo = await processor.processFolder(entryPath);
-      if (geographicFilesInfo.length > 0) {
+      geographicFilesInfo = await processor.processFolder(entryPath);
+      geotiffFilesInfo = geographicFilesInfo.filter(
+        (file) => file.type === "geoTIFF"
+      );
+      exceptGeotiffFilesInfo = geographicFilesInfo.filter(
+        (file) => file.type !== "geoTIFF"
+      );
+      if (exceptGeotiffFilesInfo.length > 0) {
         dslInstances +=
-          createEntityScheme(geographicFilesInfo) +
+          createEntityScheme(exceptGeotiffFilesInfo) +
           createMapFromEntity(
-            geographicFilesInfo,
+            exceptGeotiffFilesInfo,
             entryPath,
             path.basename(entryPath)
           );
@@ -87,6 +96,14 @@ export default class GISPublisher {
       json.features = this.config.features;
     }
 
+    //Si es geotiff comprobar feature MV_MS_GeoServer
+    if (geotiffFilesInfo.length > 0) {
+      const hasGeoServerFeature = json.features.includes("MV_MS_GeoServer");
+      if (!hasGeoServerFeature) {
+        json.features.push("MV_MS_GeoServer");
+      }
+    }
+
     fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
 
     const engine = await new DerivationEngine({
@@ -103,7 +120,14 @@ export default class GISPublisher {
     if (shouldDeploy) {
       await this.deploy();
       for (const entryPath of directories) {
-        await uploadGeographicFiles(entryPath, this.config.host);
+        if (geotiffFilesInfo.length > 0)
+          await geotiffImporter(entryPath, geotiffFilesInfo, this.config.host);
+        if (exceptGeotiffFilesInfo.length > 0)
+          await uploadGeographicFiles(
+            entryPath,
+            exceptGeotiffFilesInfo,
+            this.config.host
+          );
       }
     }
   }
