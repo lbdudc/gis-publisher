@@ -11,18 +11,8 @@ export async function geotiffImporter(
   await _waitForServer(host);
 
   console.info("Starting the import of geotiff geographic files");
-  const files = fs
-    .readdirSync(geographicFilesFolder + "/output")
-    .filter(
-      (fName) => fName.indexOf(".zip") !== -1 || fName.indexOf(".tif") !== -1
-    )
-    .filter((fName) => fName !== ".zip" && fName !== ".tif")
-    .filter((fName) => {
-      const match = geographicFilesInfo.find(
-        (file) => file.fileName === fName && file.type === "geoTIFF"
-      );
-      return Boolean(match);
-    });
+
+  const files = _getGeotiffFiles(geographicFilesFolder, geographicFilesInfo);
 
   if (files.length === 0) {
     console.warn("No matching geotiff files found.");
@@ -50,4 +40,22 @@ export async function geotiffImporter(
     }
   }
   console.info("The import of geotiff geographic files has finished");
+}
+
+function _getGeotiffFiles(geographicFilesFolder, geographicFilesInfo) {
+  const outputFolder = `${geographicFilesFolder}/output`;
+
+  return fs
+    .readdirSync(outputFolder)
+    .filter(
+      (fName) =>
+        (fName.endsWith(".zip") || fName.endsWith(".tif")) &&
+        fName !== ".zip" &&
+        fName !== ".tif"
+    )
+    .filter((fName) =>
+      geographicFilesInfo.some(
+        (file) => file.fileName === fName && file.type === "geoTIFF"
+      )
+    );
 }

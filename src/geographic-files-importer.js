@@ -3,10 +3,15 @@ import path from "path";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
 import mime from "mime";
 import { _waitForServer } from "./waitForServer.js";
+import { Blob, File } from "buffer";
 
 const DEBUG = process.env.DEBUG;
 
-export async function uploadGeographicFiles(geographicFilesFolder, host) {
+export async function uploadGeographicFiles(
+  geographicFilesFolder,
+  geographicFilesInfo,
+  host
+) {
   console.info("Starting the import of geographic files");
 
   // Fist, we wait for the server to be running to send the geographicFiles
@@ -29,7 +34,10 @@ export async function uploadGeographicFiles(geographicFilesFolder, host) {
   if (DEBUG) {
     console.log(geographicFilesFolder);
   }
-  const zipFiles = _getGeographicFiles(geographicFilesFolder);
+  const zipFiles = _getGeographicFiles(
+    geographicFilesFolder,
+    geographicFilesInfo
+  );
   if (DEBUG) {
     console.log(zipFiles);
   }
@@ -100,9 +108,9 @@ async function _uploadTempGeographicFile(
       method: "POST",
       body: formData,
     });
-    if (DEBUG) {
-      console.log(response);
-    }
+
+    console.log("aquiiiiiiiiiiiiiiiiii");
+    console.log(response);
     return await response.json();
   } catch (err) {
     console.error(`Error uploading geographic file ${geographicFileName}`, err);
@@ -110,11 +118,16 @@ async function _uploadTempGeographicFile(
   }
 }
 
-function _getGeographicFiles(geographicFilesFolder) {
+function _getGeographicFiles(geographicFilesFolder, geographicFilesInfo) {
   return fs
     .readdirSync(geographicFilesFolder + "/output")
     .filter((fName) => fName.indexOf(".zip") !== -1)
-    .filter((fName) => fName != ".zip");
+    .filter((fName) => fName != ".zip")
+    .filter((fName) =>
+      geographicFilesInfo.some(
+        (info) => info.fileName === fName && info.type === "shapefile"
+      )
+    );
 }
 
 async function _uploadGeographicFileData(
