@@ -54,7 +54,11 @@ export default class GISPublisher {
     }
     if (onlyImport) {
       for (const entryPath of directories) {
-        await uploadGeographicFiles(entryPath, this.config.host);
+        await this.uploadFiles(
+          geotiffFilesInfo,
+          exceptGeotiffFilesInfo,
+          entryPath
+        );
       }
       return;
     }
@@ -70,7 +74,7 @@ export default class GISPublisher {
     // console.log(collections);
 
     let dslInstances = createBaseDSLInstance(
-      "default",
+      "prueba1",
       this.config.deploy.type == "local"
     );
 
@@ -86,7 +90,7 @@ export default class GISPublisher {
       }
     }
 
-    dslInstances += endDSLInstance("default");
+    dslInstances += endDSLInstance("prueba1");
 
     if (DEBUG) {
       fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
@@ -139,14 +143,14 @@ export default class GISPublisher {
   }
 
   async uploadFiles(geotiffFilesInfo, exceptGeotiffFilesInfo, entryPath) {
-    if (geotiffFilesInfo.length > 0)
-      await geotiffImporter(entryPath, geotiffFilesInfo, this.config.host);
     if (exceptGeotiffFilesInfo.length > 0)
       await uploadGeographicFiles(
         entryPath,
         exceptGeotiffFilesInfo,
         this.config.host
       );
+    if (geotiffFilesInfo.length > 0)
+      await geotiffImporter(entryPath, geotiffFilesInfo, this.config.host);
   }
 
   getDirectories(rootPath) {

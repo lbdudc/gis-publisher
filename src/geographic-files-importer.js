@@ -1,9 +1,9 @@
 import fs from "fs";
 import path from "path";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
-import mime from "mime";
 import { _waitForServer } from "./waitForServer.js";
-import { Blob, File } from "buffer";
+import { Blob } from "buffer";
+import mime from "mime";
 
 const DEBUG = process.env.DEBUG;
 
@@ -94,23 +94,22 @@ async function _uploadTempGeographicFile(
       }${geographicFileName}`
     );
   }
-  const file = fs.readFileSync(
+  const fileBuffer = await fs.promises.readFile(
     `${geographicFilesFolder.replace(/\\$/, "")}${path.sep}output${
       path.sep
     }${geographicFileName}`
   );
-  const fileObj = new File([new Blob([file])], geographicFileName, {
-    type: mime.getType(geographicFileName),
-  });
-  formData.append("file", fileObj);
+  const mimeType = mime.getType(geographicFileName) || undefined;
+  const blob = new Blob([fileBuffer], { type: mimeType });
+  formData.append("file", blob, geographicFileName);
   try {
     const response = await fetch(`${host}/backend/api/import`, {
       method: "POST",
       body: formData,
     });
-
-    console.log("aquiiiiiiiiiiiiiiiiii");
-    console.log(response);
+    if (DEBUG) {
+      console.log(response);
+    }
     return await response.json();
   } catch (err) {
     console.error(`Error uploading geographic file ${geographicFileName}`, err);
@@ -152,7 +151,7 @@ async function _uploadGeographicFileData(
     entityName: entity.name,
     file: tmpGeographicFile,
     ncolumns: geographicFileAttrs.length,
-    type: "geographicFile",
+    type: "shapefile",
   };
   if (DEBUG) {
     console.log(data);
