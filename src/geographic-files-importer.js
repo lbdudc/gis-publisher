@@ -34,34 +34,56 @@ export async function uploadGeographicFiles(
   if (DEBUG) {
     console.log(geographicFilesFolder);
   }
-  const zipFiles = _getGeographicFiles(
+  const geographicFiles = _getGeographicFiles(
     geographicFilesFolder,
     geographicFilesInfo
   );
   if (DEBUG) {
-    console.log(zipFiles);
+    console.log(geographicFiles);
   }
-  for (const zipFile of zipFiles) {
+  for (const geographicFile of geographicFiles) {
     await new Promise((r) => setTimeout(r, 15000));
     const entity = entities.find((entity) =>
-      entity.name.endsWith(_fileNameToEntityName(zipFile))
+      entity.name.endsWith(_fileNameToEntityName(geographicFile))
     );
-    // We upload a temporary file to the server, and we get returned the attributes
-    const response = await _uploadTempGeographicFile(
-      host,
-      geographicFilesFolder,
-      zipFile
-    );
-    console.info(`Uploading data to the entity ${entity.name} from ${zipFile}`);
-    await _uploadGeographicFileData(
-      host,
-      response.temporaryFile,
-      response.values,
-      entity
-    );
-    await _restartBBox(host, entity);
+
+    let fileType = obtainFileType(geographicFilesInfo, geographicFile);
+
+    if (fileType == "shapefile") {
+      // We upload a temporary file to the server, and we get returned the attributes
+      const response = await _uploadTempGeographicFileShapefile(
+        host,
+        geographicFilesFolder,
+        geographicFile
+      );
+      console.info(
+        `Uploading data to the entity ${entity.name} from ${geographicFile}`
+      );
+      await _uploadGeographicFileDataShapefile(
+        host,
+        response.temporaryFile,
+        response.values,
+        entity
+      );
+    } else if (fileType == "geoTIFF") {
+      await _handleGeographicFileGeotiff(
+        host,
+        geographicFile,
+        geographicFilesFolder
+      );
+    }
+
+    if (entity) {
+      await _restartBBox(host, entity);
+    }
   }
   console.info("The import of geographic files has finished");
+}
+
+function obtainFileType(geographicFilesInfo, fileName) {
+  const name = fileName.slice(0, -4);
+  const fileInfo = geographicFilesInfo.find((info) => info.name == name);
+  return fileInfo?.type;
 }
 
 async function _getEntities(host) {
@@ -71,7 +93,7 @@ async function _getEntities(host) {
   return await fetch(`${host}/backend/api/entities`).then((res) => res.json());
 }
 
-async function _uploadTempGeographicFile(
+async function _uploadTempGeographicFileShapefile(
   host,
   geographicFilesFolder,
   geographicFileName
@@ -118,18 +140,26 @@ async function _uploadTempGeographicFile(
 }
 
 function _getGeographicFiles(geographicFilesFolder, geographicFilesInfo) {
+  const outputFolder = `${geographicFilesFolder}/output`;
+
   return fs
-    .readdirSync(geographicFilesFolder + "/output")
-    .filter((fName) => fName.indexOf(".zip") !== -1)
-    .filter((fName) => fName != ".zip")
+    .readdirSync(outputFolder)
+    .filter(
+      (fName) =>
+        (fName.endsWith(".zip") || fName.endsWith(".tif")) &&
+        fName !== ".zip" &&
+        fName !== ".tif"
+    )
     .filter((fName) =>
       geographicFilesInfo.some(
-        (info) => info.fileName === fName && info.type === "shapefile"
+        (info) =>
+          info.fileName === fName &&
+          (info.type === "shapefile" || info.type === "geoTIFF")
       )
     );
 }
 
-async function _uploadGeographicFileData(
+async function _uploadGeographicFileDataShapefile(
   host,
   tmpGeographicFile,
   geographicFileAttrs,
@@ -165,6 +195,29 @@ async function _uploadGeographicFileData(
   }).catch((err) =>
     console.error(`Error inserting data into entity ${entity.name}`, err)
   );
+}
+
+async function _handleGeographicFileGeotiff(
+  host,
+  fName,
+  geographicFilesFolder
+) {
+  await _waitForServer(host);
+  const filePath = path.join(geographicFilesFolder, fName);
+  const fileBuffer = await fs.promises.readFile(filePath);
+  const blob = new Blob([fileBuffer]);
+
+  const form = new FormData();
+  form.set("file", blob, fName);
+  try {
+    const errorrr = await fetch(`${host}/backend/api/import/layer`, {
+      method: "POST",
+      body: form,
+    });
+    console.log(errorrr);
+  } catch (err) {
+    console.error(`Fetch failed for ${fName}:`, err);
+  }
 }
 
 async function _restartBBox(host, entity) {

@@ -87,9 +87,13 @@ export function createMapFromEntity(
     .map((sh) => {
       console.log(sh);
       let sentence = "";
-      const geometryType = sh.schema.find((s) =>
-        geometryColumn.includes(s.name)
-      ).type;
+      const isRaster = sh.type?.toLowerCase() === "geotiff";
+      let geometryType = null;
+      if (!isRaster && sh.schema?.length) {
+        geometryType = sh.schema.find((s) =>
+          geometryColumn.includes(s.name)
+        )?.type;
+      }
 
       // We use this custom geom so that the annotated code can apply the correct styles,
       // only for the custom styles
@@ -107,7 +111,7 @@ export function createMapFromEntity(
             sh.name + ".sld"
           )}"${EOL}` +
           `);${EOL}${EOL}`;
-      } else {
+      } else if (!isRaster) {
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
           `${TAB}geometryType ${
@@ -118,15 +122,34 @@ export function createMapFromEntity(
           `${TAB}fillOpacity 0.7,${EOL}` +
           `${TAB}strokeOpacity 1${EOL}` +
           `);${EOL}${EOL}`;
+      } else if (isRaster) {
+        sentence +=
+          `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
+          `${TAB}geometryType ${CUSTOM_GEOM.MultiPoint},${EOL}` +
+          `${TAB}fillColor ${generateRandomHexColor(sh.name)},${EOL}` +
+          `${TAB}strokeColor ${generateRandomHexColor(sh.name, true)},${EOL}` +
+          `${TAB}fillOpacity 0.7,${EOL}` +
+          `${TAB}strokeOpacity 1${EOL}` +
+          `);${EOL}${EOL}`;
       }
-      sentence +=
-        `CREATE WMS LAYER ${lowerCamelCase(sh.name)}Layer AS "${
-          sh.name
-        }" (${EOL}` +
-        `${TAB}${upperCamelCase(sh.name)} ${lowerCamelCase(
-          sh.name
-        )}LayerStyle${EOL}` +
-        `);${EOL}${EOL}`;
+
+      if (isRaster) {
+        sentence +=
+          `CREATE WMS LAYER ${lowerCamelCase(sh.name)}Layer AS "${
+            sh.name
+          }" (${EOL}` +
+          `${TAB}${sh.name} ${lowerCamelCase(sh.name)}LayerStyle${EOL}` +
+          `);${EOL}${EOL}`;
+      } else {
+        sentence +=
+          `CREATE WMS LAYER ${lowerCamelCase(sh.name)}Layer AS "${
+            sh.name
+          }" (${EOL}` +
+          `${TAB}${upperCamelCase(sh.name)} ${lowerCamelCase(
+            sh.name
+          )}LayerStyle${EOL}` +
+          `);${EOL}${EOL}`;
+      }
 
       return sentence;
     })

@@ -18,7 +18,6 @@ import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
-import { geotiffImporter } from "./geotiff-importer.js";
 
 const DEBUG = process.env.DEBUG;
 
@@ -39,25 +38,16 @@ export default class GISPublisher {
       records: false, // true by default
     });
 
-    let geographicFilesInfo = [],
-      exceptGeotiffFilesInfo = [],
-      geotiffFilesInfo = [];
+    let geographicFilesInfo = [];
 
-    for (const entryPath of directories) {
-      geographicFilesInfo = await processor.processFolder(entryPath);
-      geotiffFilesInfo = geographicFilesInfo.filter(
-        (file) => file.type === "geoTIFF"
-      );
-      exceptGeotiffFilesInfo = geographicFilesInfo.filter(
-        (file) => file.type !== "geoTIFF"
-      );
-    }
     if (onlyImport) {
       for (const entryPath of directories) {
-        await this.uploadFiles(
-          geotiffFilesInfo,
-          exceptGeotiffFilesInfo,
-          entryPath
+        geographicFilesInfo = await processor.processFolder(entryPath);
+
+        await uploadGeographicFiles(
+          entryPath,
+          geographicFilesInfo,
+          this.config.host
         );
       }
       return;
@@ -79,19 +69,24 @@ export default class GISPublisher {
     );
 
     for (const entryPath of directories) {
-      if (exceptGeotiffFilesInfo.length > 0) {
+      geographicFilesInfo = await processor.processFolder(entryPath);
+      const exceptGeotiff = geographicFilesInfo.filter(
+        (file) => file.type != "geoTIFF"
+      );
+
+      if (geographicFilesInfo.length > 0) {
         dslInstances +=
-          createEntityScheme(exceptGeotiffFilesInfo) +
+          createEntityScheme(exceptGeotiff) +
           createMapFromEntity(
-            exceptGeotiffFilesInfo,
+            geographicFilesInfo,
             entryPath,
             path.basename(entryPath)
           );
       }
     }
-
     dslInstances += endDSLInstance("prueba1");
 
+    console.log(dslInstances);
     if (DEBUG) {
       fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
     }
@@ -106,7 +101,7 @@ export default class GISPublisher {
     json.basicData.version = this.config.version || "1.0.0";
 
     //Si es geotiff comprobar feature MV_MS_GeoServer
-    if (geotiffFilesInfo.length > 0) {
+    if (this.hasInfoGeotiffFiles(geographicFilesInfo)) {
       const hasGeoTIFFFeature = json.features.includes("DM_DI_DF_GeoTIFF");
       const hasGeoServerFeature = json.features.includes("MV_MS_GeoServer");
       if (!hasGeoServerFeature) {
@@ -116,7 +111,6 @@ export default class GISPublisher {
         json.features.push("DM_DI_DF_GeoTIFF");
       }
     }
-
     fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
 
     const engine = await new DerivationEngine({
@@ -133,24 +127,20 @@ export default class GISPublisher {
     if (shouldDeploy) {
       await this.deploy();
       for (const entryPath of directories) {
-        await this.uploadFiles(
-          geotiffFilesInfo,
-          exceptGeotiffFilesInfo,
-          entryPath
+        await uploadGeographicFiles(
+          entryPath,
+          geographicFilesInfo,
+          this.config.host
         );
       }
     }
   }
 
-  async uploadFiles(geotiffFilesInfo, exceptGeotiffFilesInfo, entryPath) {
-    if (exceptGeotiffFilesInfo.length > 0)
-      await uploadGeographicFiles(
-        entryPath,
-        exceptGeotiffFilesInfo,
-        this.config.host
-      );
-    if (geotiffFilesInfo.length > 0)
-      await geotiffImporter(entryPath, geotiffFilesInfo, this.config.host);
+  hasInfoGeotiffFiles(geographicFilesInfo) {
+    for (let geographicFileInfo of geographicFilesInfo) {
+      if (geographicFileInfo.type === "geoTIFF") return true;
+    }
+    return false;
   }
 
   getDirectories(rootPath) {
