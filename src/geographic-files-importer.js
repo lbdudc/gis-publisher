@@ -210,11 +210,10 @@ async function _handleGeographicFileGeotiff(
   const form = new FormData();
   form.set("file", blob, fName);
   try {
-    const errorrr = await fetch(`${host}/backend/api/import/layer`, {
+    await fetch(`${host}/backend/api/import/layer`, {
       method: "POST",
       body: form,
     });
-    console.log(errorrr);
   } catch (err) {
     console.error(`Fetch failed for ${fName}:`, err);
   }

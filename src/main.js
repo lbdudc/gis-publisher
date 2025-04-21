@@ -86,7 +86,6 @@ export default class GISPublisher {
     }
     dslInstances += endDSLInstance("prueba1");
 
-    console.log(dslInstances);
     if (DEBUG) {
       fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
     }
