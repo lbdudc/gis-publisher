@@ -1,4 +1,4 @@
-export async function _waitForServer(host) {
+export async function waitForServer(host) {
   let isServerRunning = false;
   while (!isServerRunning) {
     try {

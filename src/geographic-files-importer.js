@@ -1,11 +1,16 @@
 import fs from "fs";
 import path from "path";
 import { lowerCamelCase, upperCamelCase } from "./str-util.js";
-import { _waitForServer } from "./waitForServer.js";
+import { waitForServer } from "./waitForServer.js";
 import { Blob } from "buffer";
 import mime from "mime";
 
 const DEBUG = process.env.DEBUG;
+
+const GeoTypes = {
+  TIFF: "geoTIFF",
+  SHAPEFILE: "shapefile",
+};
 
 export async function uploadGeographicFiles(
   geographicFilesFolder,
@@ -15,7 +20,7 @@ export async function uploadGeographicFiles(
   console.info("Starting the import of geographic files");
 
   // Fist, we wait for the server to be running to send the geographicFiles
-  await _waitForServer(host);
+  await waitForServer(host);
 
   /* Secondly, we get all the entities from the server to create the mapping between
     the geographic files' columns and the entities' attributes */
@@ -49,7 +54,7 @@ export async function uploadGeographicFiles(
 
     let fileType = obtainFileType(geographicFilesInfo, geographicFile);
 
-    if (fileType == "shapefile") {
+    if (fileType == GeoTypes.SHAPEFILE) {
       // We upload a temporary file to the server, and we get returned the attributes
       const response = await _uploadTempGeographicFileShapefile(
         host,
@@ -65,7 +70,8 @@ export async function uploadGeographicFiles(
         response.values,
         entity
       );
-    } else if (fileType == "geoTIFF") {
+    } else if (fileType == GeoTypes.TIFF) {
+      console.info(`Uploading geotiff ${geographicFile}`);
       await _handleGeographicFileGeotiff(
         host,
         geographicFile,
@@ -81,8 +87,9 @@ export async function uploadGeographicFiles(
 }
 
 function obtainFileType(geographicFilesInfo, fileName) {
-  const name = fileName.slice(0, -4);
-  const fileInfo = geographicFilesInfo.find((info) => info.name == name);
+  const fileInfo = geographicFilesInfo.find(
+    (info) => info.fileName == fileName
+  );
   return fileInfo?.type;
 }
 
@@ -142,19 +149,25 @@ async function _uploadTempGeographicFileShapefile(
 function _getGeographicFiles(geographicFilesFolder, geographicFilesInfo) {
   const outputFolder = `${geographicFilesFolder}/output`;
 
+  const FileExtension = {
+    ZIP: "zip",
+    TIF: "tif",
+  };
+
   return fs
     .readdirSync(outputFolder)
     .filter(
       (fName) =>
-        (fName.endsWith(".zip") || fName.endsWith(".tif")) &&
-        fName !== ".zip" &&
-        fName !== ".tif"
+        (fName.endsWith(FileExtension.ZIP) ||
+          fName.endsWith(FileExtension.TIF)) &&
+        fName !== FileExtension.ZIP &&
+        fName !== FileExtension.TIF
     )
     .filter((fName) =>
       geographicFilesInfo.some(
         (info) =>
           info.fileName === fName &&
-          (info.type === "shapefile" || info.type === "geoTIFF")
+          (info.type === GeoTypes.SHAPEFILE || info.type === GeoTypes.TIFF)
       )
     );
 }
@@ -202,7 +215,7 @@ async function _handleGeographicFileGeotiff(
   fName,
   geographicFilesFolder
 ) {
-  await _waitForServer(host);
+  await waitForServer(host);
   const filePath = path.join(geographicFilesFolder, fName);
   const fileBuffer = await fs.promises.readFile(filePath);
   const blob = new Blob([fileBuffer]);

@@ -64,7 +64,7 @@ export default class GISPublisher {
     // console.log(collections);
 
     let dslInstances = createBaseDSLInstance(
-      "prueba1",
+      "prueba",
       this.config.deploy.type == "local"
     );
 
@@ -84,7 +84,7 @@ export default class GISPublisher {
           );
       }
     }
-    dslInstances += endDSLInstance("prueba1");
+    dslInstances += endDSLInstance("prueba");
 
     if (DEBUG) {
       fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
@@ -99,15 +99,15 @@ export default class GISPublisher {
 
     json.basicData.version = this.config.version || "1.0.0";
 
-    //Si es geotiff comprobar feature MV_MS_GeoServer
+    //If it is a GeoTIFF, check the MV_MS_GeoServer feature
     if (this.hasInfoGeotiffFiles(geographicFilesInfo)) {
-      const hasGeoTIFFFeature = json.features.includes("DM_DI_DF_GeoTIFF");
-      const hasGeoServerFeature = json.features.includes("MV_MS_GeoServer");
-      if (!hasGeoServerFeature) {
-        json.features.push("MV_MS_GeoServer");
-      }
-      if (!hasGeoTIFFFeature) {
-        json.features.push("DM_DI_DF_GeoTIFF");
+      if (this.hasInfoGeotiffFiles(geographicFilesInfo)) {
+        json.features = [
+          ...json.features,
+          ...["MV_MS_GeoServer", "DM_DI_DF_GeoTIFF"].filter(
+            (f) => !json.features.includes(f)
+          ),
+        ];
       }
     }
     fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
