@@ -26,11 +26,10 @@ const GeoTypes = {
   SHAPEFILE: "shapefile",
 };
 
-const GisName = this.config.name || "first_version";
-
 export default class GISPublisher {
   constructor(config) {
     this.config = config;
+    this.GisName = this.config.name || "default";
   }
 
   async run(geographicFilesFolder, bbox, shouldDeploy, onlyImport) {
@@ -71,7 +70,7 @@ export default class GISPublisher {
     // console.log(collections);
 
     let dslInstances = createBaseDSLInstance(
-      GisName,
+      this.GisName,
       this.config.deploy.type == "local"
     );
 
@@ -91,7 +90,7 @@ export default class GISPublisher {
           );
       }
     }
-    dslInstances += endDSLInstance(GisName);
+    dslInstances += endDSLInstance(this.GisName);
 
     if (DEBUG) {
       fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
