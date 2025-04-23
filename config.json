@@ -2,11 +2,11 @@
   "name": "first_version",
   "version": "2.0.0",
   "platform": {
-    "codePath": "../lps/src/platform/code",
-    "featureModel": "../lps/src/platform/model.xml",
-    "config": "../lps/src/platform/config.json",
-    "extraJS": "../lps/src/platform/extra.js",
-    "modelTransformation": "../lps/src/platform/transformation.js"
+    "codePath": "../mini-lps/src/platform/code",
+    "featureModel": "../mini-lps/src/platform/model.xml",
+    "config": "../mini-lps/src/platform/config.json",
+    "extraJS": "../mini-lps/src/platform/extra.js",
+    "modelTransformation": "../mini-lps/src/platform/transformation.js"
   },
   "deploy": {
     "type": "local"
