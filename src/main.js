@@ -21,6 +21,13 @@ import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
 const DEBUG = process.env.DEBUG;
 
+const GeoTypes = {
+  TIFF: "geoTIFF",
+  SHAPEFILE: "shapefile",
+};
+
+const GisName = this.config.name || "first_version";
+
 export default class GISPublisher {
   constructor(config) {
     this.config = config;
@@ -64,14 +71,14 @@ export default class GISPublisher {
     // console.log(collections);
 
     let dslInstances = createBaseDSLInstance(
-      "prueba",
+      GisName,
       this.config.deploy.type == "local"
     );
 
     for (const entryPath of directories) {
       geographicFilesInfo = await processor.processFolder(entryPath);
       const exceptGeotiff = geographicFilesInfo.filter(
-        (file) => file.type != "geoTIFF"
+        (file) => file.type != GeoTypes.TIFF
       );
 
       if (geographicFilesInfo.length > 0) {
@@ -84,7 +91,7 @@ export default class GISPublisher {
           );
       }
     }
-    dslInstances += endDSLInstance("prueba");
+    dslInstances += endDSLInstance(GisName);
 
     if (DEBUG) {
       fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
@@ -101,14 +108,12 @@ export default class GISPublisher {
 
     //If it is a GeoTIFF, check the MV_MS_GeoServer feature
     if (this.hasInfoGeotiffFiles(geographicFilesInfo)) {
-      if (this.hasInfoGeotiffFiles(geographicFilesInfo)) {
-        json.features = [
-          ...json.features,
-          ...["MV_MS_GeoServer", "DM_DI_DF_GeoTIFF"].filter(
-            (f) => !json.features.includes(f)
-          ),
-        ];
-      }
+      json.features = [
+        ...json.features,
+        ...["MV_MS_GeoServer", "DM_DI_DF_GeoTIFF"].filter(
+          (f) => !json.features.includes(f)
+        ),
+      ];
     }
     fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
 
@@ -137,7 +142,7 @@ export default class GISPublisher {
 
   hasInfoGeotiffFiles(geographicFilesInfo) {
     for (let geographicFileInfo of geographicFilesInfo) {
-      if (geographicFileInfo.type === "geoTIFF") return true;
+      if (geographicFileInfo.type === GeoTypes.TIFF) return true;
     }
     return false;
   }
