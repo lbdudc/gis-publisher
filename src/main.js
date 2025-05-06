@@ -29,7 +29,7 @@ const GeoTypes = {
 export default class GISPublisher {
   constructor(config) {
     this.config = config;
-    this.GisName = this.config.name || "default";
+    this.GisName = this.config.name || "test";
   }
 
   async run(geographicFilesFolder, bbox, shouldDeploy, onlyImport) {

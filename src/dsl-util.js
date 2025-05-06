@@ -73,7 +73,7 @@ export const createEntityScheme = (values) => {
 export function createMapFromEntity(
   shapefileInfo,
   shapefilesFolder,
-  mapName = "default"
+  mapName = "test"
 ) {
   let mapSyntax = ``;
 

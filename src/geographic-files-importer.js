@@ -88,7 +88,7 @@ export async function uploadGeographicFiles(
 
 function obtainFileType(geographicFilesInfo, fileName) {
   const fileInfo = geographicFilesInfo.find(
-    (info) => info.fileName == fileName
+    (info) => info.name == removeExtension(fileName)
   );
   return fileInfo?.type;
 }
@@ -166,10 +166,16 @@ function _getGeographicFiles(geographicFilesFolder, geographicFilesInfo) {
     .filter((fName) =>
       geographicFilesInfo.some(
         (info) =>
-          info.fileName === fName &&
+          //using name instead fileName because in some cases only the file shp is processed
+          info.name === removeExtension(fName) &&
           (info.type === GeoTypes.SHAPEFILE || info.type === GeoTypes.TIFF)
       )
     );
+}
+
+function removeExtension(fileName) {
+  const lastDotIndex = fileName.lastIndexOf(".");
+  return lastDotIndex > 0 ? fileName.slice(0, lastDotIndex) : fileName;
 }
 
 async function _uploadGeographicFileDataShapefile(
