@@ -1,4 +1,6 @@
 {
+  "name": "test",
+  "version": "2.0.0",
   "platform": {
     "codePath": "../mini-lps/src/platform/code",
     "featureModel": "../mini-lps/src/platform/model.xml",

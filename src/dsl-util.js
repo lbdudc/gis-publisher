@@ -73,7 +73,7 @@ export const createEntityScheme = (values) => {
 export function createMapFromEntity(
   shapefileInfo,
   shapefilesFolder,
-  mapName = "default"
+  mapName = "test"
 ) {
   let mapSyntax = ``;
 
@@ -87,9 +87,13 @@ export function createMapFromEntity(
     .map((sh) => {
       console.log(sh);
       let sentence = "";
-      const geometryType = sh.schema.find((s) =>
-        geometryColumn.includes(s.name)
-      ).type;
+      const isRaster = sh.type?.toLowerCase() === "geotiff";
+      let geometryType = null;
+      if (!isRaster && sh.schema?.length) {
+        geometryType = sh.schema.find((s) =>
+          geometryColumn.includes(s.name)
+        )?.type;
+      }
 
       // We use this custom geom so that the annotated code can apply the correct styles,
       // only for the custom styles
@@ -108,17 +112,20 @@ export function createMapFromEntity(
           )}"${EOL}` +
           `);${EOL}${EOL}`;
       } else {
+        const geometry = isRaster
+          ? CUSTOM_GEOM.MultiPoint
+          : CUSTOM_GEOM[geometryType] || geometryType;
+
         sentence +=
           `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
-          `${TAB}geometryType ${
-            CUSTOM_GEOM[geometryType] || geometryType
-          },${EOL}` +
+          `${TAB}geometryType ${geometry},${EOL}` +
           `${TAB}fillColor ${generateRandomHexColor(sh.name)},${EOL}` +
           `${TAB}strokeColor ${generateRandomHexColor(sh.name, true)},${EOL}` +
           `${TAB}fillOpacity 0.7,${EOL}` +
           `${TAB}strokeOpacity 1${EOL}` +
           `);${EOL}${EOL}`;
       }
+
       sentence +=
         `CREATE WMS LAYER ${lowerCamelCase(sh.name)}Layer AS "${
           sh.name

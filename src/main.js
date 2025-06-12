@@ -6,7 +6,7 @@ import {
   LocalUploadStrategy,
 } from "@lbdudc/gp-code-uploader";
 // import { SearchAPIClient } from "giscatalog-client";
-import Processor from "@lbdudc/gp-shapefile-reader";
+import Processor from "@lbdudc/gp-geographic-info-reader";
 import path from "path";
 import {
   createEntityScheme,
@@ -21,9 +21,15 @@ import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
 const DEBUG = process.env.DEBUG;
 
+const GeoTypes = {
+  TIFF: "geoTIFF",
+  SHAPEFILE: "shapefile",
+};
+
 export default class GISPublisher {
   constructor(config) {
     this.config = config;
+    this.GisName = this.config.name || "test";
   }
 
   async run(geographicFilesFolder, bbox, shouldDeploy, onlyImport) {
@@ -31,23 +37,30 @@ export default class GISPublisher {
       geographicFilesFolder += path.sep;
 
     const directories = this.getDirectories(geographicFilesFolder);
-
-    if (onlyImport) {
-      for (const entryPath of directories) {
-        await uploadGeographicFiles(entryPath, this.config.host);
-      }
-      return;
-    }
-    // if (DEBUG) {
-    //   console.log(SearchAPIClient);
-    // }
-
     // Create a new instance of the processor
     const processor = new Processor({
       encoding: "utf-8", // 'auto' by default || 'ascii' || 'utf8' || 'utf-8'
       geographicInfo: false, // true by default
       records: false, // true by default
     });
+
+    let geographicFilesInfo = [];
+
+    if (onlyImport) {
+      for (const entryPath of directories) {
+        geographicFilesInfo = await processor.processFolder(entryPath);
+
+        await uploadGeographicFiles(
+          entryPath,
+          geographicFilesInfo,
+          this.config.host
+        );
+      }
+      return;
+    }
+    // if (DEBUG) {
+    //   console.log(SearchAPIClient);
+    // }
 
     // const client = new SearchAPIClient({
     //   catalogURI: 'https://demo.pygeoapi.io/master',
@@ -57,15 +70,19 @@ export default class GISPublisher {
     // console.log(collections);
 
     let dslInstances = createBaseDSLInstance(
-      "default",
+      this.GisName,
       this.config.deploy.type == "local"
     );
 
     for (const entryPath of directories) {
-      const geographicFilesInfo = await processor.processFolder(entryPath);
+      geographicFilesInfo = await processor.processFolder(entryPath);
+      const exceptGeotiff = geographicFilesInfo.filter(
+        (file) => file.type != GeoTypes.TIFF
+      );
+
       if (geographicFilesInfo.length > 0) {
         dslInstances +=
-          createEntityScheme(geographicFilesInfo) +
+          createEntityScheme(exceptGeotiff) +
           createMapFromEntity(
             geographicFilesInfo,
             entryPath,
@@ -73,8 +90,7 @@ export default class GISPublisher {
           );
       }
     }
-
-    dslInstances += endDSLInstance("default");
+    dslInstances += endDSLInstance(this.GisName);
 
     if (DEBUG) {
       fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
@@ -87,6 +103,17 @@ export default class GISPublisher {
       json.features = this.config.features;
     }
 
+    json.basicData.version = this.config.version || "1.0.0";
+
+    //If it is a GeoTIFF, check the MV_MS_GeoServer feature
+    if (this.hasInfoGeotiffFiles(geographicFilesInfo)) {
+      json.features = [
+        ...json.features,
+        ...["MV_MS_GeoServer", "DM_DI_DF_GeoTIFF"].filter(
+          (f) => !json.features.includes(f)
+        ),
+      ];
+    }
     fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
 
     const engine = await new DerivationEngine({
@@ -103,9 +130,20 @@ export default class GISPublisher {
     if (shouldDeploy) {
       await this.deploy();
       for (const entryPath of directories) {
-        await uploadGeographicFiles(entryPath, this.config.host);
+        await uploadGeographicFiles(
+          entryPath,
+          geographicFilesInfo,
+          this.config.host
+        );
       }
     }
+  }
+
+  hasInfoGeotiffFiles(geographicFilesInfo) {
+    for (let geographicFileInfo of geographicFilesInfo) {
+      if (geographicFileInfo.type === GeoTypes.TIFF) return true;
+    }
+    return false;
   }
 
   getDirectories(rootPath) {
