@@ -33,7 +33,21 @@ npm install
 
 ## Configuration
 
-- Add a SPL folder with the code needed. If you don't have one, you can use the <https://github.com/lbdudc/mini-lps> source code as a template. After that change the `config.json` to set the SPL routes to the mini LPS. For example, add it in the root of this project and set the following:
+By default, this project uses the source code from the [`@lbdudc/mini-lps`](https://github.com/lbdudc/mini-lps) package, which is installed as a dependency and accessed from the `node_modules` folder. The default `config.json` is configured as follows:
+
+```json
+{
+  "platform": {
+    "codePath": "node_modules/@lbdudc/mini-lps/src/platform/code.js",
+    "featureModel": "node_modules/@lbdudc/mini-lps/src/platform/model.xml",
+    "config": "node_modules/@lbdudc/mini-lps/src/platform/config.json",
+    "extraJS": "node_modules/@lbdudc/mini-lps/src/platform/extra.js",
+    "modelTransformation": "node_modules/@lbdudc/mini-lps/src/platform/transformation.js"
+  }
+}
+```
+
+However, if you want to use a custom version of the SPL (e.g., for local development or testing), you can clone the [`mini-lps`](https://github.com/lbdudc/mini-lps) repository or use your own implementation. Place it in a local folder (e.g., `./lps`) and update the paths in `config.json` accordingly:
 
 ```json
 {
@@ -46,6 +60,8 @@ npm install
   }
 }
 ```
+
+This allows you to either rely on the default version from `node_modules` or switch to a custom folder by simply changing the configuration.
 
 Also, if you can customize the features selected in your feature model adding a "features" key in the `config.json` file. For example:
 
