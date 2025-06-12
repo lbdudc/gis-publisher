@@ -17,6 +17,7 @@
     "@lbdudc/gp-code-uploader": "^1.1.2",
     "@lbdudc/gp-geographic-info-reader": "^1.3.1",
     "@lbdudc/gp-gis-dsl": "^0.2.6",
+    "@lbdudc/mini-lps": "^0.2.4",
     "meow": "^12.0.1",
     "mime": "^4.0.6",
     "spl-js-engine": "^4.0.3"

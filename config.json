@@ -2,11 +2,11 @@
   "name": "test",
   "version": "2.0.0",
   "platform": {
-    "codePath": "../mini-lps/src/platform/code",
-    "featureModel": "../mini-lps/src/platform/model.xml",
-    "config": "../mini-lps/src/platform/config.json",
-    "extraJS": "../mini-lps/src/platform/extra.js",
-    "modelTransformation": "../mini-lps/src/platform/transformation.js"
+    "codePath": "node_modules/@lbdudc/mini-lps/src/platform/code.js",
+    "featureModel": "node_modules/@lbdudc/mini-lps/src/platform/model.xml",
+    "config": "node_modules/@lbdudc/mini-lps/src/platform/config.json",
+    "extraJS": "node_modules/@lbdudc/mini-lps/src/platform/extra.js",
+    "modelTransformation": "node_modules/@lbdudc/mini-lps/src/platform/transformation.js"
   },
   "deploy": {
     "type": "local"
