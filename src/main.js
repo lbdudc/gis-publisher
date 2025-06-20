@@ -73,7 +73,7 @@ export default class GISPublisher {
       this.GisName,
       this.config.deploy.type == "local"
     );
-
+    let allGeographicFilesInfo = [];
     for (const entryPath of directories) {
       geographicFilesInfo = await processor.processFolder(entryPath);
       const exceptGeotiff = geographicFilesInfo.filter(
@@ -88,6 +88,7 @@ export default class GISPublisher {
             entryPath,
             path.basename(entryPath)
           );
+        allGeographicFilesInfo.push(...geographicFilesInfo);
       }
     }
     dslInstances += endDSLInstance(this.GisName);
@@ -106,7 +107,7 @@ export default class GISPublisher {
     json.basicData.version = this.config.version || "1.0.0";
 
     //If it is a GeoTIFF, check the MV_MS_GeoServer feature
-    if (this.hasInfoGeotiffFiles(geographicFilesInfo)) {
+    if (this.hasInfoGeotiffFiles(allGeographicFilesInfo)) {
       json.features = [
         ...json.features,
         ...["MV_MS_GeoServer", "DM_DI_DF_GeoTIFF"].filter(
@@ -132,7 +133,7 @@ export default class GISPublisher {
       for (const entryPath of directories) {
         await uploadGeographicFiles(
           entryPath,
-          geographicFilesInfo,
+          allGeographicFilesInfo,
           this.config.host
         );
       }
