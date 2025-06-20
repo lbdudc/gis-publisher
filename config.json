@@ -2,7 +2,7 @@
   "name": "test",
   "version": "2.0.0",
   "platform": {
-    "codePath": "node_modules/@lbdudc/mini-lps/src/platform/code.js",
+    "codePath": "node_modules/@lbdudc/mini-lps/src/platform/code",
     "featureModel": "node_modules/@lbdudc/mini-lps/src/platform/model.xml",
     "config": "node_modules/@lbdudc/mini-lps/src/platform/config.json",
     "extraJS": "node_modules/@lbdudc/mini-lps/src/platform/extra.js",
