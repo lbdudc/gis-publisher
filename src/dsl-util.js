@@ -88,8 +88,10 @@ export function createMapFromEntity(
       console.log(sh);
       let sentence = "";
       const isRaster = sh.type?.toLowerCase() === "geotiff";
+      const isWms = sh.type?.toLowerCase() === "wms";
+      const isExternalWms = isWms && Array.isArray(sh.schema);
       let geometryType = null;
-      if (!isRaster && sh.schema?.length) {
+      if (!isRaster && !isExternalWms && sh.schema?.length) {
         geometryType = sh.schema.find((s) =>
           geometryColumn.includes(s.name)
         )?.type;
@@ -103,27 +105,55 @@ export function createMapFromEntity(
         MultiPoint: "Point",
       };
 
-      if (sh.hasSld) {
-        sentence +=
-          `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
-          `${TAB}styleLayerDescriptor "${path.join(
-            shapefilesFolder,
-            sh.name + ".sld"
-          )}"${EOL}` +
-          `);${EOL}${EOL}`;
+      if (isExternalWms) {
+        for (const layer of sh.schema) {
+          sentence +=
+            `CREATE WMS LAYER ${layer.layerTitle} AS "${layer.layerTitle}" (${EOL}` +
+            `${TAB}urlWms "${layer.urlWms}",${EOL}` +
+            `${TAB}layerName "${layer.layerName}",${EOL}` +
+            `${TAB}format "${layer.format}",${EOL}` +
+            `${TAB}crs "${layer.crs?.[0] || "EPSG:4326"}",${EOL}` +
+            (layer.styles?.length
+              ? `${TAB}style "${layer.styles[0]}",${EOL}`
+              : ``) +
+            `${TAB}queryable "${layer.queryable ? "true" : "false"}",${EOL}` +
+            (layer.bbox
+              ? `${TAB}bboxCRS "${layer.bbox.crs}",${EOL}` +
+                `${TAB}minX ${layer.bbox.minx},${EOL}` +
+                `${TAB}minY ${layer.bbox.miny},${EOL}` +
+                `${TAB}maxX ${layer.bbox.maxx},${EOL}` +
+                `${TAB}maxY ${layer.bbox.maxy},${EOL}`
+              : ``) +
+            `${TAB}version "${layer.version || "1.3.0"}"${EOL}` +
+            `);${EOL}${EOL}`;
+        }
+        return sentence;
       } else {
-        const geometry = isRaster
-          ? CUSTOM_GEOM.MultiPoint
-          : CUSTOM_GEOM[geometryType] || geometryType;
+        if (sh.hasSld) {
+          sentence +=
+            `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
+            `${TAB}styleLayerDescriptor "${path.join(
+              shapefilesFolder,
+              sh.name + ".sld"
+            )}"${EOL}` +
+            `);${EOL}${EOL}`;
+        } else {
+          const geometry = isRaster
+            ? CUSTOM_GEOM.MultiPoint
+            : CUSTOM_GEOM[geometryType] || geometryType;
 
-        sentence +=
-          `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
-          `${TAB}geometryType ${geometry},${EOL}` +
-          `${TAB}fillColor ${generateRandomHexColor(sh.name)},${EOL}` +
-          `${TAB}strokeColor ${generateRandomHexColor(sh.name, true)},${EOL}` +
-          `${TAB}fillOpacity 0.7,${EOL}` +
-          `${TAB}strokeOpacity 1${EOL}` +
-          `);${EOL}${EOL}`;
+          sentence +=
+            `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
+            `${TAB}geometryType ${geometry},${EOL}` +
+            `${TAB}fillColor ${generateRandomHexColor(sh.name)},${EOL}` +
+            `${TAB}strokeColor ${generateRandomHexColor(
+              sh.name,
+              true
+            )},${EOL}` +
+            `${TAB}fillOpacity 0.7,${EOL}` +
+            `${TAB}strokeOpacity 1${EOL}` +
+            `);${EOL}${EOL}`;
+        }
       }
 
       sentence +=
@@ -139,11 +169,18 @@ export function createMapFromEntity(
     })
     .join(EOL);
 
-  mapSyntax += `CREATE MAP ${mapName} AS "${mapName}" (${EOL}`;
+  mapSyntax += `CREATE MAP ${mapName}Map AS "${mapName}" (${EOL}`;
   mapSyntax += `${TAB}base IS_BASE_LAYER,${EOL}`;
   mapSyntax += shapefileInfo
     .map((sh) => {
-      return `${TAB}${lowerCamelCase(sh.name)}Layer`;
+      const isWms = sh.type?.toLowerCase() === "wms";
+      const isExternalWms = isWms && Array.isArray(sh.schema);
+      if (isExternalWms) {
+        return sh.schema
+          .map((l) => `${TAB}${l.layerTitle}`)
+          .join(`,${EOL}${TAB}`);
+      }
+      return `${lowerCamelCase(sh.name)}Layer`;
     })
     .join(`,${EOL}`);
   mapSyntax += `${EOL}`;

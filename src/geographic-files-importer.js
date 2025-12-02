@@ -10,6 +10,7 @@ const DEBUG = process.env.DEBUG;
 const GeoTypes = {
   TIFF: "geoTIFF",
   SHAPEFILE: "shapefile",
+  WMS: "wms",
 };
 
 export async function uploadGeographicFiles(
