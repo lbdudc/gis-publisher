@@ -109,7 +109,7 @@ export function createMapFromEntity(
         for (const layer of sh.schema) {
           sentence +=
             `CREATE WMS LAYER ${layer.layerTitle} AS "${layer.layerTitle}" (${EOL}` +
-            `${TAB}urlWms "${layer.urlWms}",${EOL}` +
+            `${TAB}urlWms "${layer.url}",${EOL}` +
             `${TAB}layerName "${layer.layerName}",${EOL}` +
             `${TAB}format "${layer.format}",${EOL}` +
             `${TAB}crs "${layer.crs?.[0] || "EPSG:4326"}",${EOL}` +
