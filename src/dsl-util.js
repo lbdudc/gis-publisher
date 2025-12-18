@@ -169,7 +169,7 @@ export function createMapFromEntity(
     })
     .join(EOL);
 
-  mapSyntax += `CREATE MAP ${mapName}Map AS "${mapName}" (${EOL}`;
+  mapSyntax += `CREATE MAP ${mapName} AS "${mapName}" (${EOL}`;
   mapSyntax += `${TAB}base IS_BASE_LAYER,${EOL}`;
   mapSyntax += shapefileInfo
     .map((sh) => {
