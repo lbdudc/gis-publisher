@@ -24,6 +24,7 @@ const DEBUG = process.env.DEBUG;
 const GeoTypes = {
   TIFF: "geoTIFF",
   SHAPEFILE: "shapefile",
+  WMS: "wms",
 };
 
 export default class GISPublisher {
@@ -76,13 +77,13 @@ export default class GISPublisher {
     let allGeographicFilesInfo = [];
     for (const entryPath of directories) {
       geographicFilesInfo = await processor.processFolder(entryPath);
-      const exceptGeotiff = geographicFilesInfo.filter(
-        (file) => file.type != GeoTypes.TIFF
+      const exceptRaster = geographicFilesInfo.filter(
+        (file) => file.type != GeoTypes.TIFF && file.type != GeoTypes.WMS
       );
 
       if (geographicFilesInfo.length > 0) {
         dslInstances +=
-          createEntityScheme(exceptGeotiff) +
+          createEntityScheme(exceptRaster) +
           createMapFromEntity(
             geographicFilesInfo,
             entryPath,
