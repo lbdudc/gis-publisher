@@ -16,6 +16,7 @@ import {
 } from "./dsl-util.js";
 import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
+import { getChartsFromJson } from "./chart-util.js";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
@@ -116,6 +117,11 @@ export default class GISPublisher {
         ),
       ];
     }
+
+    const chartsFolder = path.join(geographicFilesFolder, "charts");
+    if (!json.chartViewer) json.chartViewer = {};
+    json.chartViewer.charts = getChartsFromJson(chartsFolder);
+
     fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
 
     const engine = await new DerivationEngine({
