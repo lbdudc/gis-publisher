@@ -40,10 +40,11 @@ export async function uploadGeographicFiles(
   if (DEBUG) {
     console.log(geographicFilesFolder);
   }
-  const geographicFiles = _getGeographicFiles(
-    geographicFilesFolder,
-    geographicFilesInfo
-  );
+  const isChartsFolder =
+    path.basename(geographicFilesFolder).toLowerCase() === "charts";
+  const geographicFiles = isChartsFolder
+    ? []
+    : _getGeographicFiles(geographicFilesFolder, geographicFilesInfo);
   if (DEBUG) {
     console.log(geographicFiles);
   }
