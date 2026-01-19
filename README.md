@@ -15,14 +15,15 @@ Tool designed to simplify the creation of web-based Geographic Information Syste
 3. [Usage](#usage)
    - [Arguments](#arguments)
    - [Options](#options)
-4. [Examples](#examples)
-5. [Development](#development)
-6. [Changing the config.json](#changing-the-configjson)
+4. [Data Visualizations with Vega](#charts)
+5. [Examples](#examples)
+6. [Development](#development)
+7. [Changing the config.json](#changing-the-configjson)
    - [Local](#local)
    - [SSH](#ssh)
    - [AWS](#aws)
-7. [Authors](#authors)
-8. [License](#license)
+8. [Authors](#authors)
+9. [License](#license)
 
 ## Installation
 
@@ -69,6 +70,23 @@ gispublisher shapefilesFolder [--generate] [--config path] [--only-import] [--bb
 - `--bbox`: Bounding box to restrict the search. Format is expected to be: `southwest_lng,southwest_lat,northeast_lng,northeast_lat`.
 - `--help`: Print this info.
 - `--version`: Print version.
+
+## Data Visualizations with Vega
+
+GisPublisher allows including data visualizations by defining a `charts` folder in the project structure.
+Charts are described using **[Vega](https://vega.github.io/vega/)** specifications and are automatically integrated into the generated product.
+
+To add charts, create a `charts` directory inside the shapefiles folder passed to gispublisher, for example:
+
+```
+shapefilesFolder/charts
+                  ├─ /chart1.json
+                  ├─ /chart2.json
+```
+
+Each `.json` file must contain a valid Vega or Vega-Lite specification.
+
+Once the charts are added, generating the product with GisPublisher will automatically include a Data Visualizations section in the output, where all added charts can be viewed and explored.
 
 ## Examples
 
