@@ -20,6 +20,8 @@ import { getChartsFromJson } from "./chart-util.js";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
+import { fileURLToPath } from "url";
+
 const DEBUG = process.env.DEBUG;
 
 const GeoTypes = {
@@ -28,10 +30,29 @@ const GeoTypes = {
   WMS: "wms",
 };
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const CLI_ROOT = path.resolve(__dirname, "..");
+
+function resolveFromCliRoot(p) {
+  if (!p) return p;
+  return path.isAbsolute(p) ? p : path.join(CLI_ROOT, p);
+}
+
 export default class GISPublisher {
   constructor(config) {
     this.config = config;
     this.GisName = this.config.name || "test";
+
+    if (this.config.platform) {
+      const p = this.config.platform;
+
+      p.codePath = resolveFromCliRoot(p.codePath);
+      p.featureModel = resolveFromCliRoot(p.featureModel);
+      p.config = resolveFromCliRoot(p.config);
+      p.extraJS = resolveFromCliRoot(p.extraJS);
+      p.modelTransformation = resolveFromCliRoot(p.modelTransformation);
+    }
   }
 
   async run(geographicFilesFolder, bbox, shouldDeploy, onlyImport) {
