@@ -76,7 +76,11 @@ gispublisher shapefilesFolder [--generate] [--config path] [--only-import] [--bb
 GisPublisher allows including data visualizations by defining a `charts` folder in the project structure.
 Charts are described using **[Vega](https://vega.github.io/vega/)** specifications and are automatically integrated into the generated product.
 
-To add charts, create a `charts` directory inside the shapefiles folder passed to gispublisher, for example:
+There are two approaches to add charts in your project: by adding them manually or by creating them in the Chart Explorer within the UI.
+
+### Adding charts manually
+
+To add charts manually, create a `charts` directory inside the shapefiles folder passed to gispublisher, for example:
 
 ```
 shapefilesFolder/charts
@@ -86,7 +90,31 @@ shapefilesFolder/charts
 
 Each `.json` file must contain a valid Vega or Vega-Lite specification.
 
-Once the charts are added, generating the product with GisPublisher will automatically include a Data Visualizations section in the output, where all added charts can be viewed and explored.
+Charts can be defined in two different ways:
+
+**a) Standard Vega Charts**
+
+You can include any standard Vega or Vega-Lite specification that uses static data or external data sources.
+
+**b) Charts using generated entities**
+
+Charts can also use the entities generated from the shapefiles during the product generation. In this case, the data source should point to the following endpoint: `/api/entities/<entity>/export/tsv`.
+
+The chart specification must define the data source URL and indicate which fields from that entity will be used as the X and Y axes.
+
+You can see an example of a valid chart specification by exporting a chart from the Chart Explorer in the UI, which provides a JSON in the correct format.
+
+Once the charts are added, generating the product with GisPublisher will automatically include a Data Visualizations section in the output. These charts will appear in the Chart Viewer under the My Charts tab, where they can be viewed and explored.
+
+### Using the Chart Explorer
+
+In the Chart Viewer, there is another tab called Explorer, where you can create and customize your own charts. You can select:
+
+- The entity to visualize
+- The fields for the X and Y axes
+- The chart type (e.g., line, bar)
+
+Once you’ve designed a chart, you can export it. To save it in the My Charts section, move the `.json` file to the `shapefilesFolder/charts` directory. The next time you generate the product with GisPublisher, these charts will automatically appear in My Charts.
 
 ## Examples
 
@@ -137,7 +165,7 @@ npx gispublisher examples/hello_world
 ```json
 {
   "deploy": {
-    "type": "local",
+    "type": "ssh",
     "host": "your-remote-host.com or IP",
     "port": 22222,
     "username": "username",
