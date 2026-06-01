@@ -17,6 +17,7 @@ import {
 import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 import { getChartsFromJson } from "./chart-util.js";
+import { copyModelFiles } from "./model-util.js";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
@@ -155,6 +156,9 @@ export default class GISPublisher {
     });
 
     engine.generateProduct("output", readJsonFromFile("spec.json"));
+
+    const modelsFolder = path.join(geographicFilesFolder, "models");
+    copyModelFiles(modelsFolder, "output");
 
     if (shouldDeploy) {
       await this.deploy();
