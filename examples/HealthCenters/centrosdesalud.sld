@@ -25,7 +25,7 @@
           <se:PointSymbolizer>
             <se:Graphic>
               <se:Mark>
-                <se:WellKnownName>cross_fill</se:WellKnownName>
+                <se:WellKnownName>cross</se:WellKnownName>
                 <se:Fill>
                   <se:SvgParameter name="fill">#e31a1c</se:SvgParameter>
                 </se:Fill>

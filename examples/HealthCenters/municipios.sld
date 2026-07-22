@@ -13,11 +13,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThanOrEqualTo>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>240</ogc:Literal>
               </ogc:PropertyIsGreaterThanOrEqualTo>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>1198</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
@@ -41,11 +41,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThan>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>1198</ogc:Literal>
               </ogc:PropertyIsGreaterThan>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>2176.2000000000007276</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
@@ -69,11 +69,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThan>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>2176.2000000000007276</ogc:Literal>
               </ogc:PropertyIsGreaterThan>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>4187.5999999999994543</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
@@ -97,11 +97,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThan>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>4187.5999999999994543</ogc:Literal>
               </ogc:PropertyIsGreaterThan>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>9250.00000000000363798</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
@@ -125,11 +125,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThan>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>9250.00000000000363798</ogc:Literal>
               </ogc:PropertyIsGreaterThan>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>TOTAL</ogc:PropertyName>
+                <ogc:PropertyName>total</ogc:PropertyName>
                 <ogc:Literal>295523</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>

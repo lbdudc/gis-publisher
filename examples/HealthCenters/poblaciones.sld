@@ -13,11 +13,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThanOrEqualTo>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>1</ogc:Literal>
               </ogc:PropertyIsGreaterThanOrEqualTo>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>5</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
@@ -46,11 +46,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThan>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>5</ogc:Literal>
               </ogc:PropertyIsGreaterThan>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>12</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
@@ -79,11 +79,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThan>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>12</ogc:Literal>
               </ogc:PropertyIsGreaterThan>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>23</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
@@ -112,11 +112,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThan>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>23</ogc:Literal>
               </ogc:PropertyIsGreaterThan>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>52</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
@@ -145,11 +145,11 @@
           <ogc:Filter xmlns:ogc="http://www.opengis.net/ogc">
             <ogc:And>
               <ogc:PropertyIsGreaterThan>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>52</ogc:Literal>
               </ogc:PropertyIsGreaterThan>
               <ogc:PropertyIsLessThanOrEqualTo>
-                <ogc:PropertyName>POB2020</ogc:PropertyName>
+                <ogc:PropertyName>pob2020</ogc:PropertyName>
                 <ogc:Literal>214744</ogc:Literal>
               </ogc:PropertyIsLessThanOrEqualTo>
             </ogc:And>
