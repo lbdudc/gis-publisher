@@ -5,9 +5,11 @@
  */
 
 export function lowerCamelCase(str) {
-  return str
+  const camelCased = str
     .toLowerCase()
     .replace(/[^a-zA-Z0-9]+(.)/g, (m, chr) => chr.toUpperCase());
+
+  return /^[0-9]/.test(camelCased) ? `n${camelCased}` : camelCased;
 }
 
 /**

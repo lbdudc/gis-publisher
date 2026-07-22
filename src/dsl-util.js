@@ -5,6 +5,8 @@ import path from "path";
 const TAB = "  ";
 const EOL = "\n";
 
+const toFloatLiteral = (n) => (Number.isInteger(n) ? `${n}.0` : `${n}`);
+
 export function createBaseDSLInstance(name, local) {
   let str = `CREATE GIS ${name} USING 4326;${EOL}`;
   str += `USE GIS ${name};${EOL}${EOL}`;
@@ -56,7 +58,7 @@ export const createEntityScheme = (values) => {
             if (schema.name == "id") {
               schema.name += "2";
             }
-            return `${TAB}${schema.name.toLowerCase()} ${
+            return `${TAB}${lowerCamelCase(schema.name)} ${
               TYPES_REL[schema.type] || schema.type
             }`;
           })
@@ -119,10 +121,10 @@ export function createMapFromEntity(
             `${TAB}queryable "${layer.queryable ? "true" : "false"}",${EOL}` +
             (layer.bbox
               ? `${TAB}bboxCRS "${layer.bbox.crs}",${EOL}` +
-                `${TAB}minX ${layer.bbox.minx},${EOL}` +
-                `${TAB}minY ${layer.bbox.miny},${EOL}` +
-                `${TAB}maxX ${layer.bbox.maxx},${EOL}` +
-                `${TAB}maxY ${layer.bbox.maxy},${EOL}`
+                `${TAB}minX ${toFloatLiteral(layer.bbox.minx)},${EOL}` +
+                `${TAB}minY ${toFloatLiteral(layer.bbox.miny)},${EOL}` +
+                `${TAB}maxX ${toFloatLiteral(layer.bbox.maxx)},${EOL}` +
+                `${TAB}maxY ${toFloatLiteral(layer.bbox.maxy)},${EOL}`
               : ``) +
             `${TAB}version "${layer.version || "1.3.0"}"${EOL}` +
             `);${EOL}${EOL}`;
