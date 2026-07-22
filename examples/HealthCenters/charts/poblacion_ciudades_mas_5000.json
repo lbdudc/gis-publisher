@@ -1,0 +1,81 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Los 30 municipios más poblados",
+  "width": 850,
+  "height": 450,
+  "autosize": "none",
+  "padding": 20,
+  "data": [
+    {
+      "name": "dataset",
+      "url": "http://localhost:8080/api/entities/municipioss/export/tsv",
+      "format": { "type": "tsv", "parse": "auto" },
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["nameunit"],
+          "fields": ["total"],
+          "ops": ["max"],
+          "as": ["total"]
+        },
+        {
+          "type": "collect",
+          "sort": { "field": "total", "order": "descending" }
+        },
+        { "type": "window", "ops": ["row_number"], "as": ["rank"] },
+        { "type": "filter", "expr": "datum.rank <= 30" }
+      ]
+    }
+  ],
+  "scales": [
+    {
+      "name": "x",
+      "type": "band",
+      "domain": { "data": "dataset", "field": "nameunit" },
+      "range": "width",
+      "padding": 0.2
+    },
+    {
+      "name": "y",
+      "type": "linear",
+      "domain": { "data": "dataset", "field": "total" },
+      "range": "height",
+      "nice": true,
+      "zero": true
+    }
+  ],
+  "axes": [
+    {
+      "orient": "bottom",
+      "scale": "x",
+      "title": "Municipio",
+      "labelAngle": -45,
+      "labelAlign": "right",
+      "labelBaseline": "top",
+      "labelLimit": 120
+    },
+    {
+      "orient": "left",
+      "scale": "y",
+      "title": "Población (total)",
+      "grid": true,
+      "format": ",.0f"
+    }
+  ],
+  "marks": [
+    {
+      "type": "rect",
+      "from": { "data": "dataset" },
+      "encode": {
+        "update": {
+          "x": { "scale": "x", "field": "nameunit" },
+          "width": { "scale": "x", "band": 1 },
+          "y": { "scale": "y", "field": "total" },
+          "y2": { "scale": "y", "value": 0 },
+          "fill": { "value": "steelblue" },
+          "tooltip": { "signal": "datum" }
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,170 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Proporción hombres/mujeres en los 3 municipios más poblados",
+  "width": 600,
+  "height": 300,
+  "autosize": "none",
+  "padding": 20,
+  "data": [
+    {
+      "name": "top3",
+      "url": "http://localhost:8080/api/entities/municipioss/export/tsv",
+      "format": { "type": "tsv", "parse": "auto" },
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["nameunit"],
+          "fields": ["total", "hombres", "mujeres"],
+          "ops": ["max", "max", "max"],
+          "as": ["total", "hombres", "mujeres"]
+        },
+        {
+          "type": "collect",
+          "sort": { "field": "total", "order": "descending" }
+        },
+        { "type": "window", "ops": ["row_number"], "as": ["rank"] },
+        { "type": "filter", "expr": "datum.rank <= 3" }
+      ]
+    },
+    {
+      "name": "muni1",
+      "source": "top3",
+      "transform": [
+        { "type": "filter", "expr": "datum.rank == 1" },
+        {
+          "type": "fold",
+          "fields": ["hombres", "mujeres"],
+          "as": ["genero", "valor"]
+        },
+        { "type": "pie", "field": "valor" }
+      ]
+    },
+    {
+      "name": "muni2",
+      "source": "top3",
+      "transform": [
+        { "type": "filter", "expr": "datum.rank == 2" },
+        {
+          "type": "fold",
+          "fields": ["hombres", "mujeres"],
+          "as": ["genero", "valor"]
+        },
+        { "type": "pie", "field": "valor" }
+      ]
+    },
+    {
+      "name": "muni3",
+      "source": "top3",
+      "transform": [
+        { "type": "filter", "expr": "datum.rank == 3" },
+        {
+          "type": "fold",
+          "fields": ["hombres", "mujeres"],
+          "as": ["genero", "valor"]
+        },
+        { "type": "pie", "field": "valor" }
+      ]
+    }
+  ],
+  "scales": [
+    {
+      "name": "color",
+      "type": "ordinal",
+      "domain": ["hombres", "mujeres"],
+      "range": ["#4C78A8", "#F58518"]
+    }
+  ],
+  "marks": [
+    {
+      "type": "arc",
+      "from": { "data": "muni1" },
+      "encode": {
+        "enter": {
+          "fill": { "scale": "color", "field": "genero" },
+          "x": { "value": 100 },
+          "y": { "value": 150 }
+        },
+        "update": {
+          "startAngle": { "field": "startAngle" },
+          "endAngle": { "field": "endAngle" },
+          "outerRadius": { "value": 80 },
+          "tooltip": { "signal": "datum.genero + ': ' + datum.valor" }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": { "data": "muni1" },
+      "encode": {
+        "enter": {
+          "x": { "value": 100 },
+          "y": { "value": 30 },
+          "align": { "value": "center" },
+          "fontWeight": { "value": "bold" },
+          "text": { "field": "nameunit" }
+        }
+      }
+    },
+    {
+      "type": "arc",
+      "from": { "data": "muni2" },
+      "encode": {
+        "enter": {
+          "fill": { "scale": "color", "field": "genero" },
+          "x": { "value": 300 },
+          "y": { "value": 150 }
+        },
+        "update": {
+          "startAngle": { "field": "startAngle" },
+          "endAngle": { "field": "endAngle" },
+          "outerRadius": { "value": 80 },
+          "tooltip": { "signal": "datum.genero + ': ' + datum.valor" }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": { "data": "muni2" },
+      "encode": {
+        "enter": {
+          "x": { "value": 300 },
+          "y": { "value": 30 },
+          "align": { "value": "center" },
+          "fontWeight": { "value": "bold" },
+          "text": { "field": "nameunit" }
+        }
+      }
+    },
+    {
+      "type": "arc",
+      "from": { "data": "muni3" },
+      "encode": {
+        "enter": {
+          "fill": { "scale": "color", "field": "genero" },
+          "x": { "value": 500 },
+          "y": { "value": 150 }
+        },
+        "update": {
+          "startAngle": { "field": "startAngle" },
+          "endAngle": { "field": "endAngle" },
+          "outerRadius": { "value": 80 },
+          "tooltip": { "signal": "datum.genero + ': ' + datum.valor" }
+        }
+      }
+    },
+    {
+      "type": "text",
+      "from": { "data": "muni3" },
+      "encode": {
+        "enter": {
+          "x": { "value": 500 },
+          "y": { "value": 30 },
+          "align": { "value": "center" },
+          "fontWeight": { "value": "bold" },
+          "text": { "field": "nameunit" }
+        }
+      }
+    }
+  ],
+  "legends": [{ "fill": "color", "title": "Género", "orient": "bottom" }]
+}
