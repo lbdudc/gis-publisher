@@ -140,6 +140,11 @@ export default class GISPublisher {
       ];
     }
 
+    // Every generated project gets the QGIS Processing toolbox
+    if (!json.features.includes("MV_Processes")) {
+      json.features = [...json.features, "MV_Processes"];
+    }
+
     const chartsFolder = path.join(geographicFilesFolder, "charts");
     if (!json.chartViewer) json.chartViewer = {};
     json.chartViewer.charts = getChartsFromJson(chartsFolder);
