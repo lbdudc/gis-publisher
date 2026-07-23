@@ -151,6 +151,10 @@ async function _uploadTempGeographicFileShapefile(
 function _getGeographicFiles(geographicFilesFolder, geographicFilesInfo) {
   const outputFolder = `${geographicFilesFolder}/output`;
 
+  if (!fs.existsSync(outputFolder)) {
+    return [];
+  }
+
   const FileExtension = {
     ZIP: "zip",
     TIF: "tif",

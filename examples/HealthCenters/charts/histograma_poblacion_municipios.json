@@ -1,0 +1,105 @@
+{
+  "$schema": "https://vega.github.io/schema/vega/v5.json",
+  "description": "Histograma de municipios por rango de población (escala logarítmica)",
+  "width": 750,
+  "height": 450,
+  "padding": 20,
+  "autosize": "none",
+  "data": [
+    {
+      "name": "raw",
+      "url": "http://localhost:8080/api/entities/municipioss/export/tsv",
+      "format": { "type": "tsv", "parse": "auto" },
+      "transform": [
+        {
+          "type": "aggregate",
+          "groupby": ["nameunit"],
+          "fields": ["total"],
+          "ops": ["max"],
+          "as": ["total"]
+        },
+        { "type": "filter", "expr": "datum.total > 0" },
+        {
+          "type": "formula",
+          "as": "log_total",
+          "expr": "log(datum.total) / LN10"
+        },
+        { "type": "extent", "field": "log_total", "signal": "totalExtent" }
+      ]
+    },
+    {
+      "name": "dataset",
+      "source": "raw",
+      "transform": [
+        {
+          "type": "bin",
+          "field": "log_total",
+          "as": ["bin_start", "bin_end"],
+          "extent": { "signal": "totalExtent" },
+          "maxbins": 10
+        },
+        {
+          "type": "aggregate",
+          "groupby": ["bin_start", "bin_end"],
+          "ops": ["count"],
+          "as": ["count"]
+        }
+      ]
+    }
+  ],
+  "scales": [
+    {
+      "name": "x",
+      "type": "linear",
+      "domain": { "data": "dataset", "fields": ["bin_start", "bin_end"] },
+      "range": "width",
+      "nice": true
+    },
+    {
+      "name": "y",
+      "type": "linear",
+      "domain": { "data": "dataset", "field": "count" },
+      "range": "height",
+      "nice": true,
+      "zero": true
+    }
+  ],
+  "axes": [
+    {
+      "orient": "bottom",
+      "scale": "x",
+      "title": "Población (total, escala logarítmica)",
+      "grid": false,
+      "encode": {
+        "labels": {
+          "update": {
+            "text": { "signal": "format(pow(10, datum.value), ',.0f')" }
+          }
+        }
+      }
+    },
+    {
+      "orient": "left",
+      "scale": "y",
+      "title": "Número de municipios",
+      "grid": true
+    }
+  ],
+  "marks": [
+    {
+      "type": "rect",
+      "from": { "data": "dataset" },
+      "encode": {
+        "update": {
+          "x": { "scale": "x", "field": "bin_start" },
+          "x2": { "scale": "x", "field": "bin_end" },
+          "y": { "scale": "y", "field": "count" },
+          "y2": { "scale": "y", "value": 0 },
+          "fill": { "value": "steelblue" },
+          "stroke": { "value": "white" },
+          "tooltip": { "signal": "datum" }
+        }
+      }
+    }
+  ]
+}
