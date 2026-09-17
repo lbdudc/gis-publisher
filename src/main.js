@@ -18,6 +18,7 @@ import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 import { getChartsFromJson } from "./chart-util.js";
 import { copyModelFiles } from "./model-util.js";
+import { copyGeographicDataForImport } from "./import-util.js";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
@@ -123,6 +124,21 @@ export default class GISPublisher {
 
     const json = gisdslParser(dslInstances);
 
+    // gp-gis-dsl's WMSLayer.addSubLayer() stores the resolved per-layer style on a
+    // field literally named "defaultStyles" (plural) instead of "defaultStyle" —
+    // every mini-lps template/Java class that wires GeoServer's default style
+    // (layers.json's "defaultStyle" placeholder, GeoServerInit.addLayer()) reads the
+    // singular key, finds it missing, and silently never calls setDefaultStyle(),
+    // so GeoServer falls back to its own generic style (gray) even though the named
+    // custom style was created and is listed as available. Normalize here, at the
+    // boundary between the DSL parser and the generator, rather than patching the
+    // parser output shape downstream in every consumer.
+    for (const layer of json.mapViewer?.layers || []) {
+      if (layer.defaultStyle == null && layer.defaultStyles != null) {
+        layer.defaultStyle = layer.defaultStyles;
+      }
+    }
+
     // Set custom feature selection
     if (this.config.features && this.config.features.length > 0) {
       json.features = this.config.features;
@@ -164,6 +180,14 @@ export default class GISPublisher {
 
     const modelsFolder = path.join(geographicFilesFolder, "models");
     copyModelFiles(modelsFolder, "output");
+
+    // Stage the zipped shapefiles for the generated docker-compose stack's own
+    // one-shot importer, regardless of shouldDeploy — otherwise data only ever
+    // loads via a separate, explicit `gispublisher --config ...` deploy run.
+    // Must run after generateProduct, which owns (and may clean) "output".
+    for (const entryPath of directories) {
+      copyGeographicDataForImport(entryPath, "output");
+    }
 
     if (shouldDeploy) {
       await this.deploy();
