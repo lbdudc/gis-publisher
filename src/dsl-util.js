@@ -23,8 +23,13 @@ export function createBaseDSLInstance(name, local) {
   } else {
     str += `SET DEPLOYMENT (${EOL}`;
     str += `  "geoserver_user" "admin",${EOL}`;
-    str += `  "geoserver_password" "geoserver",${EOL}`;
-    str += `  "geoserver_url_wms" "http://localhost:8080/geoserver"${EOL}`;
+    // No geoserver_url_wms override here: leave it unset so the generated
+    // client's .env.production falls through to its own D_C_Geoserver/
+    // D_C_Nginx-aware default, which routes WMS requests through nginx's
+    // /geoserver/ proxy when nginx is part of the stack (as server_deploy_url
+    // already does below for the backend) instead of always hitting
+    // GeoServer's own port directly.
+    str += `  "geoserver_password" "geoserver"${EOL}`;
     str += `);${EOL}${EOL}`;
   }
 
