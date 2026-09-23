@@ -22,10 +22,11 @@ const sanitizeDslText = (text) =>
         .replace(/["']/g, "");
 
 // The DSL layer identifier gispublisher derives for a staged, non-external-WMS
-// entry — shared between createMapFromEntity (which emits it) and main.js's
-// post-processing step (which needs to map the parsed spec's per-map layer
-// entries, keyed by this same identifier, back to their qgis-project.json
-// manifest entry) so the naming convention is defined exactly once.
+// entry — shared between createLayerDeclarations/createMapBlock (which emit
+// it) and main.js's post-processing step (which needs to map the parsed
+// spec's per-map layer entries, keyed by this same identifier, back to their
+// qgis-project.json manifest entry) so the naming convention is defined
+// exactly once.
 export const dslLayerId = (stagedName) => `${lowerCamelCase(stagedName)}Layer`;
 
 export function createBaseDSLInstance(name, local) {
@@ -110,12 +111,24 @@ export const createEntityScheme = (values, manifest = null) => {
   return schemaSyntax;
 };
 
-export function createMapFromEntity(
+// A staged file can only be declared as an entity/WMS layer/WMS style
+// *once* — gp-gis-dsl's addEntity throws "Entity <name> already exists" on a
+// second CREATE ENTITY for the same name (addLayer/addStyle don't throw, but
+// a repeat is still pure waste). So when the same layer needs to show up in
+// more than one map (e.g. a QGIS group's own map *and* an overview map with
+// everything), it's declared once with createLayerDeclarations and then
+// referenced by identifier from as many createMapBlock calls as needed — a
+// CREATE MAP block only needs the identifier to already exist somewhere
+// earlier in the DSL text (gp-gis-dsl's visitCreateMap does `getLayer(l.id)`
+// against everything parsed so far, not just the current statement), not to
+// redeclare it. main.js is the only caller of both, and is what makes that
+// call: entities/styles/layers get declared once per staged directory, but
+// the DSL's CREATE MAP list for a directory's own map plus the final
+// "everything" map are built separately from the same declarations.
+export function createLayerDeclarations(
   shapefileInfo,
   shapefilesFolder,
-  mapName = "test",
-  manifest = null,
-  mapTitle = null
+  manifest = null
 ) {
   let mapSyntax = ``;
 
@@ -125,13 +138,6 @@ export function createMapFromEntity(
   // older plugin version, or a WMS/model/chart sidecar), falls through to
   // today's behaviour unchanged.
   const layersByStaged = manifest?.layersByStaged || {};
-  // The caller (main.js) decides what this map's label should be — the
-  // overall project title for the default/ungrouped map, or a QGIS group's
-  // own name for a group map (see qgispublisher-plugin's
-  // naming.assign_group_dirnames) — since this function has no way to tell
-  // those apart from shapefilesFolder/mapName alone. Falls back to mapName,
-  // matching pre-manifest behaviour, when the caller passes nothing.
-  const resolvedMapTitle = sanitizeDslText(mapTitle) || mapName;
 
   const geometryColumn = ["geometry", "geom"];
 
@@ -223,6 +229,30 @@ export function createMapFromEntity(
       return sentence;
     })
     .join(EOL);
+
+  return mapSyntax;
+}
+
+/**
+ * Builds one `CREATE SORTABLE MAP` block referencing layers that
+ * createLayerDeclarations has *already* declared (for shapefileInfo itself,
+ * or — when this is the "everything" overview map — for every directory's
+ * shapefileInfo). Never declares an entity/style/layer itself: only a
+ * reference by identifier, so calling this more than once for the same
+ * layer (once for its own group's map, once more for the overview map) is
+ * exactly as safe as it is for gp-gis-dsl's `CREATE SORTABLE MAP ... (
+ * existingLayerId, ... )` — see createLayerDeclarations' docstring.
+ */
+export function createMapBlock(
+  shapefileInfo,
+  mapName,
+  manifest = null,
+  mapTitle = null
+) {
+  const layersByStaged = manifest?.layersByStaged || {};
+  const resolvedMapTitle = sanitizeDslText(mapTitle) || mapName;
+
+  let mapSyntax = ``;
 
   // Order the map's layer list by the manifest's QGIS layer-tree order (an
   // entry the manifest doesn't cover — an older plugin, or an external WMS

@@ -10,7 +10,8 @@ import Processor from "@lbdudc/gp-geographic-info-reader";
 import path from "path";
 import {
   createEntityScheme,
-  createMapFromEntity,
+  createLayerDeclarations,
+  createMapBlock,
   createBaseDSLInstance,
   endDSLInstance,
 } from "./dsl-util.js";
@@ -121,18 +122,47 @@ export default class GISPublisher {
       );
 
       if (geographicFilesInfo.length > 0) {
+        // Entities/styles/layers get declared exactly once per staged
+        // directory, regardless of how many maps end up referencing them —
+        // see createLayerDeclarations' docstring for why a repeat CREATE
+        // ENTITY isn't safe (gp-gis-dsl throws) even though a repeat
+        // reference in a CREATE MAP block is fine.
         dslInstances +=
           createEntityScheme(exceptRaster, manifest) +
-          createMapFromEntity(
+          createLayerDeclarations(geographicFilesInfo, entryPath, manifest);
+        allGeographicFilesInfo.push(...geographicFilesInfo);
+
+        // A QGIS group's own directory gets its own dedicated map right
+        // here. The root/default directory's map is deferred until every
+        // directory has been processed, so it can be the "everything"
+        // overview map below instead of just its own (possibly empty, if
+        // every layer is grouped) files.
+        if (entryPath !== geographicFilesFolder) {
+          dslInstances += createMapBlock(
             geographicFilesInfo,
-            entryPath,
             path.basename(entryPath),
             manifest,
             resolveMapTitle(manifest, entryPath, geographicFilesFolder)
           );
-        allGeographicFilesInfo.push(...geographicFilesInfo);
+        }
       }
     }
+
+    // The overview map: every layer declared above, from every directory —
+    // under the root directory's own identifier/title. Identical to the
+    // single map a project with no QGIS groups has always gotten
+    // (allGeographicFilesInfo then equals just the root's own files, and
+    // entryPath === geographicFilesFolder is true for root, so this call is
+    // the exact same one the loop used to make for it).
+    if (allGeographicFilesInfo.length > 0) {
+      dslInstances += createMapBlock(
+        allGeographicFilesInfo,
+        path.basename(geographicFilesFolder),
+        manifest,
+        resolveMapTitle(manifest, geographicFilesFolder, geographicFilesFolder)
+      );
+    }
+
     dslInstances += endDSLInstance(this.GisName);
 
     if (DEBUG) {
