@@ -11,10 +11,14 @@ const MANIFEST_FILENAME = "qgis-project.json";
  * discover on its own: the project's title/extent, and per-layer display
  * name/visibility/order/opacity/scale range/field aliases.
  *
- * Returns `{ project, layersByStaged }` — `layersByStaged` keyed by each
- * layer entry's `staged` basename, which is exactly the CLI's own `sh.name`
- * (see gp-geographic-info-reader's FileProcessor.js: `fileName.split(".")[0]`)
- * — or `null` if the manifest is absent, unreadable, or malformed.
+ * Returns `{ project, layersByStaged, groups }` — `layersByStaged` keyed by
+ * each layer entry's `staged` basename, which is exactly the CLI's own
+ * `sh.name` (see gp-geographic-info-reader's FileProcessor.js:
+ * `fileName.split(".")[0]`); `groups` keyed by a staged group *directory*
+ * name (i.e. `path.basename(entryPath)` for a group subdirectory) to that
+ * QGIS group's original display name, for a map's label — see
+ * `resolveMapTitle` below. Returns `null` if the manifest is absent,
+ * unreadable, or malformed.
  *
  * A `null`/partial result must never break generation: every caller treats a
  * missing manifest exactly like every gispublisher release before this one
@@ -49,7 +53,28 @@ export function readProjectManifest(folder) {
     }
   }
 
-  return { project: parsed.project || {}, layersByStaged };
+  return {
+    project: parsed.project || {},
+    layersByStaged,
+    groups:
+      parsed.groups && typeof parsed.groups === "object" ? parsed.groups : {},
+  };
+}
+
+/**
+ * The label a map built from `entryPath` should carry: the QGIS project's
+ * own title for the default/ungrouped map (`entryPath === rootFolder`), the
+ * original QGIS group name for a group map (looked up by the staged
+ * directory name in `manifest.groups` — see readProjectManifest), or
+ * `path.basename(entryPath)` when neither is available (no manifest, an
+ * older plugin version, or a directory the manifest doesn't know about).
+ */
+export function resolveMapTitle(manifest, entryPath, rootFolder) {
+  const dirName = path.basename(entryPath);
+  if (entryPath === rootFolder) {
+    return manifest?.project?.title || dirName;
+  }
+  return manifest?.groups?.[dirName] || dirName;
 }
 
 const isFiniteNumber = (n) => typeof n === "number" && Number.isFinite(n);

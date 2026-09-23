@@ -19,7 +19,11 @@ import fs from "fs";
 import { getChartsFromJson } from "./chart-util.js";
 import { copyModelFiles } from "./model-util.js";
 import { copyGeographicDataForImport } from "./import-util.js";
-import { readProjectManifest, applyManifestToMaps } from "./manifest-util.js";
+import {
+  readProjectManifest,
+  applyManifestToMaps,
+  resolveMapTitle,
+} from "./manifest-util.js";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
@@ -123,7 +127,8 @@ export default class GISPublisher {
             geographicFilesInfo,
             entryPath,
             path.basename(entryPath),
-            manifest
+            manifest,
+            resolveMapTitle(manifest, entryPath, geographicFilesFolder)
           );
         allGeographicFilesInfo.push(...geographicFilesInfo);
       }

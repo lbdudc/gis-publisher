@@ -114,7 +114,8 @@ export function createMapFromEntity(
   shapefileInfo,
   shapefilesFolder,
   mapName = "test",
-  manifest = null
+  manifest = null,
+  mapTitle = null
 ) {
   let mapSyntax = ``;
 
@@ -124,7 +125,13 @@ export function createMapFromEntity(
   // older plugin version, or a WMS/model/chart sidecar), falls through to
   // today's behaviour unchanged.
   const layersByStaged = manifest?.layersByStaged || {};
-  const mapTitle = sanitizeDslText(manifest?.project?.title) || mapName;
+  // The caller (main.js) decides what this map's label should be — the
+  // overall project title for the default/ungrouped map, or a QGIS group's
+  // own name for a group map (see qgispublisher-plugin's
+  // naming.assign_group_dirnames) — since this function has no way to tell
+  // those apart from shapefilesFolder/mapName alone. Falls back to mapName,
+  // matching pre-manifest behaviour, when the caller passes nothing.
+  const resolvedMapTitle = sanitizeDslText(mapTitle) || mapName;
 
   const geometryColumn = ["geometry", "geom"];
 
@@ -255,7 +262,7 @@ export function createMapFromEntity(
 
   // SORTABLE (not just MAP): enables MV_LM_Order's reorder-layers UI, and
   // costs nothing when there's no manifest to sort by.
-  mapSyntax += `CREATE SORTABLE MAP ${mapName} AS "${mapTitle}" (${EOL}`;
+  mapSyntax += `CREATE SORTABLE MAP ${mapName} AS "${resolvedMapTitle}" (${EOL}`;
   mapSyntax += `${TAB}base IS_BASE_LAYER,${EOL}`;
   mapSyntax += orderedEntries
     .map((entry) => `${TAB}${entry.id}${entry.hidden ? " HIDDEN" : ""}`)
