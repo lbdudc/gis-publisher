@@ -31,6 +31,10 @@ const cli = meow(usage, {
       type: "string",
       isRequired: false,
     },
+    bbox: {
+      type: "string",
+      isRequired: false,
+    },
   },
 });
 
@@ -54,6 +58,22 @@ if (!folder) {
 const bbox = cli.flags.bbox;
 
 const gispublisher = new GISPublisher(config);
-gispublisher.run(folder, bbox, !cli.flags.generate, cli.flags.onlyImport);
 
 console.log(`Running gispublisher for folder ${folder} and bbox ${bbox}`);
+
+// Awaited (and wrapped) deliberately: run() is async, and leaving it a bare,
+// un-awaited call meant a failed generation/deploy surfaced only as an
+// unhandled promise rejection while the process could still exit 0 — the
+// plugin's GISPublisherRunner decides success purely from the exit code, so
+// that was a silent false "success" on every failure.
+try {
+  await gispublisher.run(
+    folder,
+    bbox,
+    !cli.flags.generate,
+    cli.flags.onlyImport
+  );
+} catch (error) {
+  console.error(error);
+  process.exitCode = 1;
+}

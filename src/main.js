@@ -10,7 +10,8 @@ import Processor from "@lbdudc/gp-geographic-info-reader";
 import path from "path";
 import {
   createEntityScheme,
-  createMapFromEntity,
+  createLayerDeclarations,
+  createMapBlock,
   createBaseDSLInstance,
   endDSLInstance,
 } from "./dsl-util.js";
@@ -19,6 +20,11 @@ import fs from "fs";
 import { getChartsFromJson } from "./chart-util.js";
 import { copyModelFiles } from "./model-util.js";
 import { copyGeographicDataForImport } from "./import-util.js";
+import {
+  readProjectManifest,
+  applyManifestToMaps,
+  resolveMapTitle,
+} from "./manifest-util.js";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
 
@@ -62,6 +68,16 @@ export default class GISPublisher {
       geographicFilesFolder += path.sep;
 
     const directories = this.getDirectories(geographicFilesFolder);
+    // qgis-project.json, staged by the QGIS plugin alongside the layers it
+    // exports — carries display names/order/visibility/opacity/extent the
+    // file-extension scan below has no way to discover on its own. null for
+    // any staged folder that doesn't have one (older plugin versions, or a
+    // non-QGIS caller), in which case every use of it below is a no-op and
+    // generation proceeds exactly as it did before this existed.
+    const manifest = this.applyBboxOverride(
+      readProjectManifest(geographicFilesFolder),
+      bbox
+    );
     // Create a new instance of the processor
     const processor = new Processor({
       encoding: "utf-8", // 'auto' by default || 'ascii' || 'utf8' || 'utf-8'
@@ -106,16 +122,47 @@ export default class GISPublisher {
       );
 
       if (geographicFilesInfo.length > 0) {
+        // Entities/styles/layers get declared exactly once per staged
+        // directory, regardless of how many maps end up referencing them —
+        // see createLayerDeclarations' docstring for why a repeat CREATE
+        // ENTITY isn't safe (gp-gis-dsl throws) even though a repeat
+        // reference in a CREATE MAP block is fine.
         dslInstances +=
-          createEntityScheme(exceptRaster) +
-          createMapFromEntity(
-            geographicFilesInfo,
-            entryPath,
-            path.basename(entryPath)
-          );
+          createEntityScheme(exceptRaster, manifest) +
+          createLayerDeclarations(geographicFilesInfo, entryPath, manifest);
         allGeographicFilesInfo.push(...geographicFilesInfo);
+
+        // A QGIS group's own directory gets its own dedicated map right
+        // here. The root/default directory's map is deferred until every
+        // directory has been processed, so it can be the "everything"
+        // overview map below instead of just its own (possibly empty, if
+        // every layer is grouped) files.
+        if (entryPath !== geographicFilesFolder) {
+          dslInstances += createMapBlock(
+            geographicFilesInfo,
+            path.basename(entryPath),
+            manifest,
+            resolveMapTitle(manifest, entryPath, geographicFilesFolder)
+          );
+        }
       }
     }
+
+    // The overview map: every layer declared above, from every directory —
+    // under the root directory's own identifier/title. Identical to the
+    // single map a project with no QGIS groups has always gotten
+    // (allGeographicFilesInfo then equals just the root's own files, and
+    // entryPath === geographicFilesFolder is true for root, so this call is
+    // the exact same one the loop used to make for it).
+    if (allGeographicFilesInfo.length > 0) {
+      dslInstances += createMapBlock(
+        allGeographicFilesInfo,
+        path.basename(geographicFilesFolder),
+        manifest,
+        resolveMapTitle(manifest, geographicFilesFolder, geographicFilesFolder)
+      );
+    }
+
     dslInstances += endDSLInstance(this.GisName);
 
     if (DEBUG) {
@@ -138,6 +185,22 @@ export default class GISPublisher {
         layer.defaultStyle = layer.defaultStyles;
       }
     }
+
+    // WMSStyle.js keeps `sldPath` (the absolute path the SLD was read from inside
+    // the staged temp folder, e.g. C:\Users\<user>\AppData\Local\Temp\qgis_...)
+    // alongside the already-inlined `sld` body. No mini-lps template reads
+    // `sldPath` — it's a leftover that ends up copied verbatim into the shipped
+    // product's styles.json. Drop it so a generated app never carries the
+    // generating machine's local filesystem layout.
+    for (const style of json.mapViewer?.styles || []) {
+      delete style.sldPath;
+    }
+
+    // Sets map.center and per-layer order/opacity from qgis-project.json — see
+    // manifest-util.js for why this happens here (as a direct mutation of the
+    // already-parsed spec) rather than through new DSL grammar. A no-op when
+    // manifest is null.
+    applyManifestToMaps(json, manifest);
 
     // Set custom feature selection
     if (this.config.features && this.config.features.length > 0) {
@@ -199,6 +262,36 @@ export default class GISPublisher {
         );
       }
     }
+  }
+
+  // `--bbox southwest_lng,southwest_lat,northeast_lng,northeast_lat`, documented
+  // in usage.txt/README since before this existed, was read (cli.js) and passed
+  // through to run() but never actually used anywhere — a manual override of the
+  // map's extent is exactly what qgis-project.json's `project.extent` now drives
+  // (see manifest-util.js's applyManifestToMaps), so this wires the flag into
+  // that same mechanism instead of leaving it silently dead.
+  applyBboxOverride(manifest, bbox) {
+    if (!bbox) return manifest;
+
+    const parts = String(bbox)
+      .split(",")
+      .map((p) => Number(p.trim()));
+    if (parts.length !== 4 || parts.some((n) => !Number.isFinite(n))) {
+      console.warn(
+        `Ignoring --bbox "${bbox}": expected 4 comma-separated numbers ` +
+          "(southwest_lng,southwest_lat,northeast_lng,northeast_lat)."
+      );
+      return manifest;
+    }
+    const [xmin, ymin, xmax, ymax] = parts;
+
+    return {
+      project: {
+        ...(manifest?.project || {}),
+        extent: { crs: "EPSG:4326", xmin, ymin, xmax, ymax },
+      },
+      layersByStaged: manifest?.layersByStaged || {},
+    };
   }
 
   hasInfoGeotiffFiles(geographicFilesInfo) {
