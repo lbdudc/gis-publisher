@@ -10,6 +10,11 @@
   "bin": {
     "gispublisher": "src/cli.js"
   },
+  "files": [
+    "src",
+    "usage.txt",
+    "config.json"
+  ],
   "engines": {
     "node": ">=19.0.0"
   },
