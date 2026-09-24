@@ -37,9 +37,15 @@ export function copyGeographicDataForImport(
     fs.copyFileSync(path.join(zipsFolder, file), path.join(dataFolder, file));
   }
 
+  // .mjs (not .js): the script uses ESM `import` syntax and deploy/importer/
+  // has no package.json to set "type":"module" for a plain .js file — without
+  // the .mjs extension, `node import.js` throws "Cannot use import statement
+  // outside a module" and docker-compose's data-importer service exits 1,
+  // leaving the generated app with an empty database. mini-lps's own
+  // deploy/importer/Dockerfile template COPYs/CMDs this same filename.
   fs.copyFileSync(
-    path.join(__dirname, "templates", "import.js"),
-    path.join(destFolder, "import.js")
+    path.join(__dirname, "templates", "import.mjs"),
+    path.join(destFolder, "import.mjs")
   );
 
   console.info(

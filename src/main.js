@@ -13,6 +13,7 @@ import {
   createLayerDeclarations,
   createMapBlock,
   createBaseDSLInstance,
+  createBaseTileLayer,
   endDSLInstance,
 } from "./dsl-util.js";
 import gisdslParser from "@lbdudc/gp-gis-dsl";
@@ -114,6 +115,10 @@ export default class GISPublisher {
       this.GisName,
       this.config.deploy.type == "local"
     );
+    // Declared exactly once per run, not once per staged directory (see
+    // createBaseTileLayer's docstring) — otherwise a grouped project
+    // duplicates the "base" tile layer once per group.
+    dslInstances += createBaseTileLayer();
     let allGeographicFilesInfo = [];
     for (const entryPath of directories) {
       geographicFilesInfo = await processor.processFolder(entryPath);

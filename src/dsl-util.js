@@ -125,6 +125,23 @@ export const createEntityScheme = (values, manifest = null) => {
 // call: entities/styles/layers get declared once per staged directory, but
 // the DSL's CREATE MAP list for a directory's own map plus the final
 // "everything" map are built separately from the same declarations.
+/**
+ * The `CREATE TILE LAYER base ...` DSL declaration, factored out of
+ * createLayerDeclarations so main.js can emit it exactly once per run
+ * (see createBaseTileLayer's call site) instead of once per staged
+ * directory. gp-gis-dsl's addLayer() — unlike addEntity() — never throws on
+ * a repeat identifier, so a per-directory `base` declaration didn't fail a
+ * grouped project's generation, it just silently duplicated: the generated
+ * layers.json ended up with two `"name": "base"` entries and the locale
+ * files' `layer-label` block got a duplicate JSON key.
+ */
+export function createBaseTileLayer() {
+  let mapSyntax = `CREATE TILE LAYER base AS "OpenStreetMap" (${EOL}`;
+  mapSyntax += `${TAB}url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"${EOL}`;
+  mapSyntax += `);${EOL}${EOL}`;
+  return mapSyntax;
+}
+
 export function createLayerDeclarations(
   shapefileInfo,
   shapefilesFolder,
@@ -140,10 +157,6 @@ export function createLayerDeclarations(
   const layersByStaged = manifest?.layersByStaged || {};
 
   const geometryColumn = ["geometry", "geom"];
-
-  mapSyntax += `CREATE TILE LAYER base AS "OpenStreetMap" (${EOL}`;
-  mapSyntax += `${TAB}url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"${EOL}`;
-  mapSyntax += `);${EOL}${EOL}`;
 
   mapSyntax += shapefileInfo
     .map((sh) => {
