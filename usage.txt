@@ -8,4 +8,6 @@
       --only-import, -i # Only import shapefiles
       --bbox            # Bounding box to restrict the search. Format is expected to be:
                         # southwest_lng,southwest_lat,northeast_lng,northeast_lat
+      --progress        # How progress is reported: "text" (default, readable lines)
+                        # or "json" (one `@@gp {...}` line per event, for programs)
     To print debug messages, set the env variable DEBUG=true

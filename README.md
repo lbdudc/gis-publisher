@@ -68,8 +68,11 @@ gispublisher shapefilesFolder [--generate] [--config path] [--only-import] [--bb
 - `--config`: Path to config file (default config file if not used).
 - `--only-import, -i`: Only import shapefiles.
 - `--bbox`: Bounding box to restrict the search. Format is expected to be: `southwest_lng,southwest_lat,northeast_lng,northeast_lat`.
+- `--progress <text|json>`: How progress is reported. `text` (default) prints readable lines such as `[5/8] Upload code - done (8s)`. `json` prints one `@@gp {...}` line per event (`plan`, `step`, `services`, `log`, `result`, `error`) for programs that show their own UI, such as the QGIS plugin; see `src/progress.js` for the event shapes.
 - `--help`: Print this info.
 - `--version`: Print version.
+
+A deployment ends when every service of the generated stack is healthy (one-shot services such as the data importer must have exited successfully), and the app's URL is reported as the result. The data is loaded by the stack's own `data-importer` service; `--only-import` is only needed to load data into an already running app.
 
 ## Data Visualizations with Vega
 
@@ -149,7 +152,7 @@ npx gispublisher examples/hello_world
 ### Local
 
 - Pre-requisites:
-  Have docker and docker-compose installed
+  Have Docker (with the compose plugin) installed and running
 
 ```json
 {
@@ -161,6 +164,8 @@ npx gispublisher examples/hello_world
 ```
 
 ### SSH
+
+Needs an `ssh`/`scp` client on this machine and key based authentication (no password prompts). Docker is installed on the server the first time, which needs a user with passwordless `sudo`. `remoteRepoPath` must be an absolute folder at least two levels deep: it is emptied on every deploy.
 
 ```json
 {

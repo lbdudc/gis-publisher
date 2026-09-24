@@ -248,6 +248,14 @@ export function applyManifestToMaps(json, manifest) {
       // OSM/Esri base tiles only exist in Web Mercator: under another CRS
       // they would draw at the wrong place, so they are left out of this map.
       map.layers = (map.layers || []).filter((l) => !l.baseLayer);
+
+      // The same goes for XYZ tile overlays (the plugin's tile layers)
+      const tileLayerNames = new Set(
+        (json.mapViewer.layers || [])
+          .filter((l) => l.type === "tilelayer")
+          .map((l) => l.name)
+      );
+      map.layers = map.layers.filter((l) => !tileLayerNames.has(l.name));
     }
     if (hasValidExtent) {
       // A plain [[southWestLat, southWestLng], [northEastLat, northEastLng]]

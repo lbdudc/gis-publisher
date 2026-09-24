@@ -21,6 +21,24 @@ const sanitizeDslText = (text) =>
         .replace(/[\r\n]+/g, " ")
         .replace(/["']/g, "");
 
+// A URL goes in a quoted DSL text too, which can't hold a quote at all: they are
+// percent-encoded (a valid URL never contains a raw one anyway).
+const dslUrl = (url) =>
+  String(url)
+    .replace(/[\r\n]+/g, "")
+    .replace(/"/g, "%22")
+    .replace(/'/g, "%27");
+
+// Attribution is shown as HTML by Leaflet: keep only its text, and write the
+// quotes as entities so they can't end the DSL text.
+const dslAttribution = (html) =>
+  String(html || "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
 // The DSL layer identifier gispublisher derives for a staged, non-external-WMS
 // entry — shared between createLayerDeclarations/createMapBlock (which emit
 // it) and main.js's post-processing step (which needs to map the parsed
@@ -145,7 +163,8 @@ export function createBaseTileLayer() {
 export function createLayerDeclarations(
   shapefileInfo,
   shapefilesFolder,
-  manifest = null
+  manifest = null,
+  rasterNames = null
 ) {
   let mapSyntax = ``;
 
@@ -163,6 +182,7 @@ export function createLayerDeclarations(
       console.log(sh);
       let sentence = "";
       const isRaster = sh.type?.toLowerCase() === "geotiff";
+      const isXyz = sh.type?.toLowerCase() === "xyz";
       const isWms = sh.type?.toLowerCase() === "wms";
       const isExternalWms = isWms && Array.isArray(sh.schema);
       let geometryType = null;
@@ -203,6 +223,53 @@ export function createLayerDeclarations(
             `);${EOL}${EOL}`;
         }
         return sentence;
+      } else if (isXyz) {
+        const xyz = sh.xyz || {};
+        const label =
+          sanitizeDslText(layersByStaged[sh.name]?.title) || sh.name;
+        const options = [];
+        if (xyz.attribution) {
+          options.push(`"attribution" "${dslAttribution(xyz.attribution)}"`);
+        }
+        if (xyz.zmin != null) options.push(`"minNativeZoom" "${xyz.zmin}"`);
+        if (xyz.zmax != null) options.push(`"maxNativeZoom" "${xyz.zmax}"`);
+
+        sentence +=
+          `CREATE TILE LAYER ${dslLayerId(sh.name)} AS "${label}" (${EOL}` +
+          `${TAB}url "${dslUrl(xyz.url)}"` +
+          options.map((option) => `,${EOL}${TAB}${option}`).join("") +
+          `${EOL});${EOL}${EOL}`;
+        return sentence;
+      } else if (isRaster) {
+        const label =
+          sanitizeDslText(layersByStaged[sh.name]?.title) || sh.name;
+        const layerName = rasterNames?.get(sh.name);
+        if (!layerName) {
+          throw new Error(
+            `No GeoServer layer name assigned to raster ${sh.name}`
+          );
+        }
+
+        // Without an SLD, GeoServer's own default raster style applies: a
+        // vector-style placeholder (the old random fill colour) meant nothing
+        // to a coverage.
+        if (sh.hasSld) {
+          sentence +=
+            `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
+            `${TAB}styleLayerDescriptor "${path.join(
+              shapefilesFolder,
+              sh.name + ".sld"
+            )}"${EOL}` +
+            `);${EOL}${EOL}`;
+        }
+        sentence +=
+          `CREATE RASTER LAYER ${dslLayerId(sh.name)} AS "${label}" (${EOL}` +
+          `${TAB}layerName "${layerName}"` +
+          (sh.hasSld
+            ? `,${EOL}${TAB}style ${lowerCamelCase(sh.name)}LayerStyle`
+            : ``) +
+          `${EOL});${EOL}${EOL}`;
+        return sentence;
       } else {
         if (sh.hasSld) {
           sentence +=
@@ -213,9 +280,7 @@ export function createLayerDeclarations(
             )}"${EOL}` +
             `);${EOL}${EOL}`;
         } else {
-          const geometry = isRaster
-            ? CUSTOM_GEOM.MultiPoint
-            : CUSTOM_GEOM[geometryType] || geometryType;
+          const geometry = CUSTOM_GEOM[geometryType] || geometryType;
 
           sentence +=
             `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +

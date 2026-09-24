@@ -16,7 +16,8 @@ const GeoTypes = {
 export async function uploadGeographicFiles(
   geographicFilesFolder,
   geographicFilesInfo,
-  host
+  host,
+  rasterNames = new Map()
 ) {
   console.info("Starting the import of geographic files");
 
@@ -77,7 +78,8 @@ export async function uploadGeographicFiles(
       await _handleGeographicFileGeotiff(
         host,
         geographicFile,
-        geographicFilesFolder
+        geographicFilesFolder,
+        rasterNames.get(removeExtension(geographicFile))
       );
     }
 
@@ -225,7 +227,8 @@ async function _uploadGeographicFileDataShapefile(
 async function _handleGeographicFileGeotiff(
   host,
   fName,
-  geographicFilesFolder
+  geographicFilesFolder,
+  layerName
 ) {
   await waitForServer(host);
   const filePath = path.join(geographicFilesFolder, fName);
@@ -234,11 +237,18 @@ async function _handleGeographicFileGeotiff(
 
   const form = new FormData();
   form.set("file", blob, fName);
+  // the GeoServer layer name the generated client asks for (see raster-util.js)
+  if (layerName) form.set("name", layerName);
   try {
-    await fetch(`${host}/backend/api/import/layer`, {
+    const response = await fetch(`${host}/backend/api/import/layer`, {
       method: "POST",
       body: form,
     });
+    if (!response.ok) {
+      console.error(
+        `Uploading geotiff ${fName} failed with status ${response.status}`
+      );
+    }
   } catch (err) {
     console.error(`Fetch failed for ${fName}:`, err);
   }

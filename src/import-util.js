@@ -19,15 +19,23 @@ const IMPORTER_DEST_RELATIVE = path.join("deploy", "importer");
  */
 export function copyGeographicDataForImport(
   geographicFilesFolder,
-  outputFolder
+  outputFolder,
+  rasterNames = new Map()
 ) {
   const zipsFolder = path.join(geographicFilesFolder, "output");
   if (!fs.existsSync(zipsFolder)) return;
 
-  const zipFiles = fs
-    .readdirSync(zipsFolder)
-    .filter((file) => file.toLowerCase().endsWith(".zip"));
-  if (zipFiles.length === 0) return;
+  const outputFiles = fs.readdirSync(zipsFolder);
+  const zipFiles = outputFiles.filter((file) =>
+    file.toLowerCase().endsWith(".zip")
+  );
+  // GeoTIFFs go up under the GeoServer layer name gispublisher gave them (see
+  // raster-util.js), so what the importer uploads is what the client asks for.
+  const tifFiles = outputFiles.filter(
+    (file) =>
+      /\.tiff?$/i.test(file) && rasterNames.has(file.replace(/\.[^.]+$/, ""))
+  );
+  if (zipFiles.length === 0 && tifFiles.length === 0) return;
 
   const destFolder = path.join(outputFolder, IMPORTER_DEST_RELATIVE);
   const dataFolder = path.join(destFolder, "data");
@@ -35,6 +43,18 @@ export function copyGeographicDataForImport(
 
   for (const file of zipFiles) {
     fs.copyFileSync(path.join(zipsFolder, file), path.join(dataFolder, file));
+  }
+
+  if (tifFiles.length > 0) {
+    const rastersFolder = path.join(dataFolder, "rasters");
+    fs.mkdirSync(rastersFolder, { recursive: true });
+    for (const file of tifFiles) {
+      const layerName = rasterNames.get(file.replace(/\.[^.]+$/, ""));
+      fs.copyFileSync(
+        path.join(zipsFolder, file),
+        path.join(rastersFolder, `${layerName}.tif`)
+      );
+    }
   }
 
   // .mjs (not .js): the script uses ESM `import` syntax and deploy/importer/
@@ -49,6 +69,6 @@ export function copyGeographicDataForImport(
   );
 
   console.info(
-    `Staged ${zipFiles.length} shapefile(s) for auto-import in ${dataFolder}`
+    `Staged ${zipFiles.length} shapefile(s) and ${tifFiles.length} raster(s) for auto-import in ${dataFolder}`
   );
 }

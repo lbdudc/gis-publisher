@@ -3,6 +3,7 @@
 import meow from "meow";
 import fs from "fs";
 import GISPublisher from "./main.js";
+import { createReporter } from "./progress.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -35,6 +36,11 @@ const cli = meow(usage, {
       type: "string",
       isRequired: false,
     },
+    progress: {
+      type: "string",
+      choices: ["text", "json"],
+      default: "text",
+    },
   },
 });
 
@@ -57,7 +63,8 @@ if (!folder) {
 
 const bbox = cli.flags.bbox;
 
-const gispublisher = new GISPublisher(config);
+const reporter = createReporter(cli.flags.progress);
+const gispublisher = new GISPublisher(config, { reporter });
 
 console.log(`Running gispublisher for folder ${folder} and bbox ${bbox}`);
 
@@ -74,6 +81,8 @@ try {
     cli.flags.onlyImport
   );
 } catch (error) {
-  console.error(error);
+  reporter.error(error);
+  // json mode reports the failure as an event; keep the plain error on stderr too
+  if (cli.flags.progress === "json") console.error(error);
   process.exitCode = 1;
 }

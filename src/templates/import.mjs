@@ -13,6 +13,7 @@ import path from "path";
 
 const SERVER_HOST = process.env.SERVER_HOST || "http://server:9001";
 const DATA_DIR = path.join(process.cwd(), "data");
+const RASTER_DIR = path.join(DATA_DIR, "rasters");
 
 function lowerCamelCase(str) {
   const camelCased = str
@@ -103,6 +104,62 @@ async function restartBBox(entity) {
   });
 }
 
+/*
+ * A GeoTIFF is uploaded under the GeoServer layer name in its file name (already
+ * chosen by gispublisher, and the one the generated client asks GeoServer for).
+ * The server may still be starting GeoServer up when it starts answering, so a
+ * failed upload is retried.
+ */
+async function uploadRaster(fileName, retries = 6, delayMs = 10000) {
+  const layerName = fileName.replace(/\.[^.]+$/, "");
+  const buffer = await fs.promises.readFile(path.join(RASTER_DIR, fileName));
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const formData = new FormData();
+      formData.append("name", layerName);
+      formData.append("file", new Blob([buffer]), fileName);
+
+      const response = await fetch(`${SERVER_HOST}/api/import/layer`, {
+        method: "POST",
+        body: formData,
+      });
+      if (response.ok) return;
+      console.warn(
+        `[import] raster upload returned ${response.status} (attempt ${attempt}/${retries})`
+      );
+    } catch (e) {
+      console.warn(
+        `[import] raster upload failed (${e.message}) (attempt ${attempt}/${retries})`
+      );
+    }
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  throw new Error(`upload failed after ${retries} attempts`);
+}
+
+/*
+ * The importer runs every time its container starts, and the database outlives the
+ * containers (it is a volume): without this check every `docker compose up` that restarts
+ * it loads all the shapefiles again, and each layer ends up with its features duplicated.
+ * An entity that already has rows is left as it is; to load a new version of the data,
+ * start from an empty database (`docker compose down -v`).
+ */
+async function hasData(entity) {
+  const parts = entity.name.split(".");
+  const segment = parts[parts.length - 1].replace(/^./, (c) => c.toLowerCase());
+  try {
+    const res = await fetch(
+      `${SERVER_HOST}/api/entities/${segment}s?page=0&size=1`
+    );
+    if (!res.ok) return false;
+    const page = await res.json();
+    return (page.totalElements || 0) > 0;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function main() {
   if (!fs.existsSync(DATA_DIR)) {
     console.info("[import] No data folder found, nothing to import.");
@@ -111,9 +168,12 @@ async function main() {
   const zipFiles = fs
     .readdirSync(DATA_DIR)
     .filter((f) => f.toLowerCase().endsWith(".zip"));
+  const rasterFiles = fs.existsSync(RASTER_DIR)
+    ? fs.readdirSync(RASTER_DIR).filter((f) => /\.tiff?$/i.test(f))
+    : [];
 
-  if (zipFiles.length === 0) {
-    console.info("[import] No shapefiles staged for import.");
+  if (zipFiles.length === 0 && rasterFiles.length === 0) {
+    console.info("[import] Nothing staged for import.");
     return;
   }
 
@@ -128,6 +188,12 @@ async function main() {
       console.warn(`[import] No entity matches "${fileName}", skipping.`);
       continue;
     }
+    if (await hasData(entity)) {
+      console.info(
+        `[import] ${entity.name} already has data, skipping ${fileName}.`
+      );
+      continue;
+    }
     try {
       console.info(`[import] Uploading ${fileName} -> ${entity.name}...`);
       const { temporaryFile, values } = await uploadTempShapefile(
@@ -137,6 +203,16 @@ async function main() {
       await importShapefileData(temporaryFile, values, entity);
       await restartBBox(entity);
       console.info(`[import] ${fileName} imported into ${entity.name}.`);
+    } catch (e) {
+      console.error(`[import] Failed to import ${fileName}: ${e.message}`);
+    }
+  }
+
+  for (const fileName of rasterFiles) {
+    try {
+      console.info(`[import] Uploading raster ${fileName}...`);
+      await uploadRaster(fileName);
+      console.info(`[import] Raster ${fileName} imported.`);
     } catch (e) {
       console.error(`[import] Failed to import ${fileName}: ${e.message}`);
     }
