@@ -19,12 +19,13 @@ import {
 import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 import { getChartsFromJson } from "./chart-util.js";
-import { copyModelFiles } from "./model-util.js";
+import { copyModelFiles, getModelsFromFolder } from "./model-util.js";
 import { copyGeographicDataForImport } from "./import-util.js";
 import {
   readProjectManifest,
   applyManifestToMaps,
   resolveMapTitle,
+  processingCrsFromManifest,
 } from "./manifest-util.js";
 
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
@@ -207,6 +208,16 @@ export default class GISPublisher {
     // manifest is null.
     applyManifestToMaps(json, manifest);
 
+    // A projected QGIS project CRS is what Processing models were most likely
+    // authored against; hand it to the WPS service's env (deploy/.env).
+    const processingCrs = processingCrsFromManifest(manifest);
+    if (processingCrs) {
+      json.basicData.extra = {
+        ...json.basicData.extra,
+        processing_crs: processingCrs,
+      };
+    }
+
     // Set custom feature selection
     if (this.config.features && this.config.features.length > 0) {
       json.features = this.config.features;
@@ -228,6 +239,12 @@ export default class GISPublisher {
     if (!json.features.includes("MV_Processes")) {
       json.features = [...json.features, "MV_Processes"];
     }
+
+    // Models the user staged. The product template only bundles its demo model
+    // when this is empty, so a user's own models aren't listed next to it.
+    json.processModels = getModelsFromFolder(
+      path.join(geographicFilesFolder, "models")
+    );
 
     const chartsFolder = path.join(geographicFilesFolder, "charts");
     if (!json.chartViewer) json.chartViewer = {};

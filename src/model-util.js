@@ -43,6 +43,19 @@ export function copyModelFiles(modelsFolder, outputFolder) {
     console.info(`Created models destination folder: ${destFolder}`);
   }
 
+  // Regenerating into an existing output must not leave models from a previous
+  // run (or the template's demo model) behind: the WPS container serves every
+  // .model3 in this folder.
+  for (const stale of fs.readdirSync(destFolder)) {
+    if (
+      path.extname(stale).toLowerCase() === ".model3" &&
+      !modelFiles.includes(stale)
+    ) {
+      fs.rmSync(path.join(destFolder, stale));
+      console.info(`Removed stale model: ${stale}`);
+    }
+  }
+
   for (const file of modelFiles) {
     const src = path.join(modelsFolder, file);
     const dest = path.join(destFolder, file);
