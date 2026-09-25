@@ -20,7 +20,10 @@ import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
 import { getChartsFromJson } from "./chart-util.js";
 import { copyModelFiles, getModelsFromFolder } from "./model-util.js";
-import { copyGeographicDataForImport } from "./import-util.js";
+import {
+  copyGeographicDataForImport,
+  createImportStaging,
+} from "./import-util.js";
 import { assignRasterNames, rasterLayerName } from "./raster-util.js";
 import { readTileSidecars } from "./tile-util.js";
 import { scopeWmsLayers } from "./wms-util.js";
@@ -31,6 +34,11 @@ import {
   processingCrsFromManifest,
 } from "./manifest-util.js";
 
+import {
+  dataModelFingerprint,
+  decideResetData,
+  saveDeployState,
+} from "./deploy-state.js";
 import { uploadGeographicFiles } from "./geographic-files-importer.js";
 import { createReporter } from "./progress.js";
 
@@ -140,6 +148,7 @@ export default class GISPublisher {
     // The GeoServer layer name of every raster, chosen once for the whole run
     // (see raster-util.js) and shared by the DSL and the importer.
     const rasterNames = new Map();
+    let dataModelHash = null;
 
     await reporter.runStep("read", "Read geographic data", async () => {
       dslInstances = createBaseDSLInstance(
@@ -313,6 +322,7 @@ export default class GISPublisher {
       json.chartViewer.charts = getChartsFromJson(chartsFolder);
 
       fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
+      dataModelHash = dataModelFingerprint(json);
 
       const engine = await new DerivationEngine({
         codePath: this.config.platform.codePath,
@@ -333,15 +343,13 @@ export default class GISPublisher {
       // loads via a separate, explicit `gispublisher --config ...` deploy run.
       // Must run after generateProduct, which owns (and may clean) "output".
       // Generation doesn't wipe old output, and a deployment folder is reused
-      // across runs: without clearing the previous data, a layer removed from the
-      // project would still be imported.
-      fs.rmSync(path.join("output", "deploy", "importer", "data"), {
-        recursive: true,
-        force: true,
-      });
+      // across runs: `staging.finish()` drops the files of layers removed from the
+      // project (they would still be imported) and leaves unchanged files alone.
+      const staging = createImportStaging("output");
       for (const entryPath of directories) {
-        copyGeographicDataForImport(entryPath, "output", rasterNames);
+        copyGeographicDataForImport(entryPath, "output", rasterNames, staging);
       }
+      staging.finish();
     });
 
     const outputDir = path.resolve("output");
@@ -350,13 +358,25 @@ export default class GISPublisher {
       return;
     }
 
+    // A redeploy keeps the database: only a changed data model needs a clean one.
+    const reset = decideResetData(
+      outputDir,
+      dataModelHash,
+      deployment.config.resetData
+    );
+    deployment.config.resetData = reset.resetData;
+    if (reset.resetData) {
+      console.info(`Starting from an empty database: ${reset.reason}.`);
+    }
+
     // The data is loaded by the stack's own one-shot `data-importer` service
-    // (which skips entities that already have rows), and the deployment only
-    // finishes once that service has exited successfully. Importing again from
-    // here would duplicate every feature.
+    // (which only loads the layers that are new or changed), and the deployment
+    // only finishes once that service has exited successfully. Importing again
+    // from here would duplicate every feature.
     const { url } = await deployment.uploader.deploy(deployment.config, {
       onEvent: (event) => reporter.forward(event),
     });
+    saveDeployState(outputDir, dataModelHash);
     reporter.result({ url, outputDir });
   }
 
