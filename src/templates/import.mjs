@@ -74,16 +74,28 @@ async function uploadTempShapefile(zipPath, fileName) {
   return await response.json();
 }
 
+// The server wants a pattern for every date column, though a shapefile's dates come as
+// dates (not text), so it is never used to read them
+const DATE_PATTERNS = {
+  "java.time.LocalDate": "yyyy-MM-dd",
+  "java.time.LocalDateTime": "yyyy-MM-dd'T'HH:mm:ss",
+};
+
+function columnOf(entity, attr) {
+  if (attr.toLowerCase().includes("geom")) {
+    return entity.properties.find((p) => p.name.toLowerCase() === "geometry");
+  }
+  const property = entity.properties.find(
+    (p) => p.name === lowerCamelCase(attr)
+  );
+  return property && DATE_PATTERNS[property.type]
+    ? { ...property, pattern: DATE_PATTERNS[property.type] }
+    : property;
+}
+
 async function importShapefileData(temporaryFile, values, entity) {
   const data = {
-    columns: values.map((attr) => {
-      if (attr.toLowerCase().includes("geom")) {
-        return entity.properties.find(
-          (p) => p.name.toLowerCase() === "geometry"
-        );
-      }
-      return entity.properties.find((p) => p.name === lowerCamelCase(attr));
-    }),
+    columns: values.map((attr) => columnOf(entity, attr)),
     encoding: "utf-8",
     entityName: entity.name,
     file: temporaryFile,
@@ -165,6 +177,21 @@ function readManifest() {
   }
 }
 
+/* Layers people edit in the web app: read from the data manifest (see editedLayersInfo). */
+function readEdited() {
+  try {
+    const data = JSON.parse(
+      fs.readFileSync(path.join(DATA_DIR, "manifest.json"), "utf-8")
+    );
+    return {
+      editable: new Set(data.editable || []),
+      overwrite: data.overwriteEdited === true,
+    };
+  } catch (e) {
+    return { editable: new Set(), overwrite: false };
+  }
+}
+
 function hashOf(manifest, key, filePath) {
   // No manifest (data staged by an older gispublisher): hash the file itself
   return (
@@ -225,6 +252,11 @@ async function rasterPublished(layerName) {
   }
 }
 
+// Layers that could not be loaded: the run then exits with an error, so the deployment
+// reports it instead of finishing with a layer missing
+const failures = [];
+const edited = readEdited();
+
 async function importShapefiles(zipFiles, entities, manifest, state) {
   for (const fileName of zipFiles) {
     const entity = entities.find((e) =>
@@ -238,6 +270,13 @@ async function importShapefiles(zipFiles, entities, manifest, state) {
     if (state[fileName] === hash && (await hasData(entity))) {
       console.info(
         `[import] ${fileName} is unchanged and ${entity.name} already has its data, skipping.`
+      );
+      continue;
+    }
+    // A layer edited on the web keeps its rows: replacing them would delete the edits.
+    if (edited.editable.has(fileName) && !edited.overwrite && (await hasData(entity))) {
+      console.info(
+        `[import] ${fileName} changed but ${entity.name} is edited in the app: its rows are kept (set overwriteEditedLayers to replace them).`
       );
       continue;
     }
@@ -257,6 +296,7 @@ async function importShapefiles(zipFiles, entities, manifest, state) {
       console.info(`[import] ${fileName} imported into ${entity.name}.`);
     } catch (e) {
       console.error(`[import] Failed to import ${fileName}: ${e.message}`);
+      failures.push(fileName);
     }
   }
 }
@@ -278,6 +318,7 @@ async function importRasters(rasterFiles, manifest, state) {
       console.info(`[import] Raster ${fileName} imported.`);
     } catch (e) {
       console.error(`[import] Failed to import ${fileName}: ${e.message}`);
+      failures.push(fileName);
     }
   }
 }
@@ -311,6 +352,12 @@ async function main() {
     importRasters(rasterFiles, manifest, state),
   ]);
 
+  if (failures.length > 0) {
+    console.error(
+      `[import] Done, but ${failures.length} file(s) could not be imported: ${failures.join(", ")}`
+    );
+    process.exit(1);
+  }
   console.info("[import] Done.");
 }
 

@@ -6,7 +6,7 @@
     "url": "git+https://github.com/lbdudc/gis-publisher.git"
   },
   "type": "module",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "bin": {
     "gispublisher": "src/cli.js"
   },
@@ -19,10 +19,10 @@
     "node": ">=19.0.0"
   },
   "dependencies": {
-    "@lbdudc/gp-code-uploader": "^2.1.0",
-    "@lbdudc/gp-geographic-info-reader": "^1.4.0",
+    "@lbdudc/gp-code-uploader": "^2.2.0",
+    "@lbdudc/gp-geographic-info-reader": "^1.5.0",
     "@lbdudc/gp-gis-dsl": "^0.5.0",
-    "@lbdudc/mini-lps": "^0.5.1",
+    "@lbdudc/mini-lps": "^0.6.0",
     "meow": "^12.0.1",
     "mime": "^4.0.6",
     "spl-js-engine": "^4.0.3"

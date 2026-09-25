@@ -48,7 +48,11 @@ export function createImportStaging(outputFolder) {
       fs.copyFileSync(source, dest);
     },
 
-    finish() {
+    /**
+     * `extra` goes into the manifest next to the hashes: `editable` (file names of the layers
+     * people change in the web app) and `overwriteEdited` (load them anyway).
+     */
+    finish(extra = {}) {
       if (Object.keys(files).length === 0) {
         // Generation doesn't wipe old output: without this, a project whose layers
         // were all removed would still import them.
@@ -58,7 +62,7 @@ export function createImportStaging(outputFolder) {
       removeStale(dataFolder, dataFolder, files);
       fs.writeFileSync(
         manifestPath,
-        JSON.stringify({ version: 1, files }, null, 2),
+        JSON.stringify({ version: 1, files, ...extra }, null, 2),
         "utf-8"
       );
     },
@@ -78,6 +82,43 @@ function removeStale(root, dir, keep) {
       fs.rmSync(full, { force: true });
     }
   }
+}
+
+/**
+ * What the importer must know about layers edited on the web: their file names, so a
+ * redeploy does not replace the rows people changed, and whether to replace them anyway
+ * (`deploy.overwriteEditedLayers`). Empty when no layer is editable.
+ */
+export function editedLayersInfo(manifest, deploy = {}) {
+  const editable = Object.values(manifest?.layersByStaged || {})
+    .filter((entry) => entry.editable === true)
+    .map((entry) => `${entry.staged}.zip`);
+  if (editable.length === 0) return {};
+  return { editable, overwriteEdited: deploy?.overwriteEditedLayers === true };
+}
+
+/**
+ * The importer files (`{relative path: hash}`) staging `geographicFilesFolders` would
+ * produce, without copying any data: what `--update-data` compares with the last run.
+ */
+export function planImportData(
+  geographicFilesFolders,
+  outputFolder,
+  rasterNames = new Map()
+) {
+  const files = {};
+  const recording = {
+    files,
+    quiet: true,
+    stage(relative, source, hash) {
+      files[posix(relative)] = hash;
+    },
+    finish() {},
+  };
+  for (const folder of geographicFilesFolders) {
+    copyGeographicDataForImport(folder, outputFolder, rasterNames, recording);
+  }
+  return files;
 }
 
 /**
@@ -147,9 +188,11 @@ export function copyGeographicDataForImport(
       path.join(destFolder, "import.mjs")
     );
 
-    console.info(
-      `Staged ${zipFiles.length} shapefile(s) and ${tifFiles.length} raster(s) for auto-import in ${staging.dataFolder}`
-    );
+    if (!staging.quiet) {
+      console.info(
+        `Staged ${zipFiles.length} shapefile(s) and ${tifFiles.length} raster(s) for auto-import in ${staging.dataFolder}`
+      );
+    }
   };
 
   stageFolder();

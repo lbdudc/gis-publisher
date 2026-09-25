@@ -15,6 +15,7 @@ import {
   createBaseDSLInstance,
   createBaseTileLayer,
   endDSLInstance,
+  normalizeSpecTypes,
 } from "./dsl-util.js";
 import gisdslParser from "@lbdudc/gp-gis-dsl";
 import fs from "fs";
@@ -23,16 +24,32 @@ import { copyModelFiles, getModelsFromFolder } from "./model-util.js";
 import {
   copyGeographicDataForImport,
   createImportStaging,
+  planImportData,
 } from "./import-util.js";
+import { checkDataUpdate } from "./update-data.js";
+import { withEnvCredentials } from "./credentials-util.js";
+import { editAuth } from "./edit-auth.js";
+import { editedLayersInfo } from "./import-util.js";
 import { assignRasterNames, rasterLayerName } from "./raster-util.js";
 import { readTileSidecars } from "./tile-util.js";
 import { scopeWmsLayers } from "./wms-util.js";
 import {
   readProjectManifest,
   applyManifestToMaps,
+  applyManifestToSpec,
+  hasTemporalLayers,
+  hasEditableLayers,
   resolveMapTitle,
   processingCrsFromManifest,
 } from "./manifest-util.js";
+import {
+  appOptionsFromManifest,
+  applyFeatureOptions,
+  applyBrandingToSpec,
+  basemapFromManifest,
+  brandingFromManifest,
+} from "./options-util.js";
+import { stageBrandingLogo, BRANDING_DIR } from "./branding-util.js";
 
 import {
   dataModelFingerprint,
@@ -79,7 +96,7 @@ export default class GISPublisher {
     }
   }
 
-  async run(geographicFilesFolder, bbox, shouldDeploy, onlyImport) {
+  async run(geographicFilesFolder, bbox, shouldDeploy, onlyImport, updateData) {
     if (!geographicFilesFolder.endsWith(path.sep))
       geographicFilesFolder += path.sep;
 
@@ -136,11 +153,19 @@ export default class GISPublisher {
     // console.log(collections);
 
     const reporter = this.reporter;
-    const deployment = shouldDeploy ? this.prepareDeploy() : null;
+    // An update-data run always goes to a deployment, and never regenerates the app
+    const deployment = shouldDeploy || updateData ? this.prepareDeploy() : null;
     reporter.plan([
       { id: "read", label: "Read geographic data" },
-      { id: "generate", label: "Generate application" },
-      ...(deployment ? deployment.uploader.describe(deployment.config) : []),
+      {
+        id: "generate",
+        label: updateData ? "Prepare the data" : "Generate application",
+      },
+      ...(deployment
+        ? updateData
+          ? deployment.uploader.describeUpdate(deployment.config)
+          : deployment.uploader.describe(deployment.config)
+        : []),
     ]);
 
     let dslInstances;
@@ -149,6 +174,7 @@ export default class GISPublisher {
     // (see raster-util.js) and shared by the DSL and the importer.
     const rasterNames = new Map();
     let dataModelHash = null;
+    let editAccount = null; // {user, password, htpasswd} when the app has editable layers
 
     await reporter.runStep("read", "Read geographic data", async () => {
       dslInstances = createBaseDSLInstance(
@@ -158,7 +184,7 @@ export default class GISPublisher {
       // Declared exactly once per run, not once per staged directory (see
       // createBaseTileLayer's docstring) — otherwise a grouped project
       // duplicates the "base" tile layer once per group.
-      dslInstances += createBaseTileLayer();
+      dslInstances += createBaseTileLayer(basemapFromManifest(manifest));
       const usedRasterNames = new Set();
       for (const entryPath of directories) {
         // XYZ tile layers have no file for the reader: the plugin stages them as
@@ -241,120 +267,201 @@ export default class GISPublisher {
       dslInstances += endDSLInstance(this.GisName);
     });
 
-    await reporter.runStep("generate", "Generate application", async () => {
-      if (DEBUG) {
-        fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
-      }
-
-      const json = gisdslParser(dslInstances);
-
-      // gp-gis-dsl's WMSLayer.addSubLayer() stores the resolved per-layer style on a
-      // field literally named "defaultStyles" (plural) instead of "defaultStyle" —
-      // every mini-lps template/Java class that wires GeoServer's default style
-      // (layers.json's "defaultStyle" placeholder, GeoServerInit.addLayer()) reads the
-      // singular key, finds it missing, and silently never calls setDefaultStyle(),
-      // so GeoServer falls back to its own generic style (gray) even though the named
-      // custom style was created and is listed as available. Normalize here, at the
-      // boundary between the DSL parser and the generator, rather than patching the
-      // parser output shape downstream in every consumer.
-      for (const layer of json.mapViewer?.layers || []) {
-        if (layer.defaultStyle == null && layer.defaultStyles != null) {
-          layer.defaultStyle = layer.defaultStyles;
+    await reporter.runStep(
+      "generate",
+      updateData ? "Prepare the data" : "Generate application",
+      async () => {
+        if (DEBUG) {
+          fs.writeFileSync("spec.dsl", dslInstances, "utf-8");
         }
-      }
 
-      // WMSStyle.js keeps `sldPath` (the absolute path the SLD was read from inside
-      // the staged temp folder, e.g. C:\Users\<user>\AppData\Local\Temp\qgis_...)
-      // alongside the already-inlined `sld` body. No mini-lps template reads
-      // `sldPath` — it's a leftover that ends up copied verbatim into the shipped
-      // product's styles.json. Drop it so a generated app never carries the
-      // generating machine's local filesystem layout.
-      for (const style of json.mapViewer?.styles || []) {
-        delete style.sldPath;
-      }
+        const json = normalizeSpecTypes(gisdslParser(dslInstances));
 
-      // Sets map.center and per-layer order/opacity from qgis-project.json — see
-      // manifest-util.js for why this happens here (as a direct mutation of the
-      // already-parsed spec) rather than through new DSL grammar. A no-op when
-      // manifest is null.
-      applyManifestToMaps(json, manifest);
+        // gp-gis-dsl's WMSLayer.addSubLayer() stores the resolved per-layer style on a
+        // field literally named "defaultStyles" (plural) instead of "defaultStyle" —
+        // every mini-lps template/Java class that wires GeoServer's default style
+        // (layers.json's "defaultStyle" placeholder, GeoServerInit.addLayer()) reads the
+        // singular key, finds it missing, and silently never calls setDefaultStyle(),
+        // so GeoServer falls back to its own generic style (gray) even though the named
+        // custom style was created and is listed as available. Normalize here, at the
+        // boundary between the DSL parser and the generator, rather than patching the
+        // parser output shape downstream in every consumer.
+        for (const layer of json.mapViewer?.layers || []) {
+          if (layer.defaultStyle == null && layer.defaultStyles != null) {
+            layer.defaultStyle = layer.defaultStyles;
+          }
+        }
 
-      // A projected QGIS project CRS is what Processing models were most likely
-      // authored against; hand it to the WPS service's env (deploy/.env).
-      const processingCrs = processingCrsFromManifest(manifest);
-      if (processingCrs) {
-        json.basicData.extra = {
-          ...json.basicData.extra,
-          processing_crs: processingCrs,
-        };
-      }
+        // WMSStyle.js keeps `sldPath` (the absolute path the SLD was read from inside
+        // the staged temp folder, e.g. C:\Users\<user>\AppData\Local\Temp\qgis_...)
+        // alongside the already-inlined `sld` body. No mini-lps template reads
+        // `sldPath` — it's a leftover that ends up copied verbatim into the shipped
+        // product's styles.json. Drop it so a generated app never carries the
+        // generating machine's local filesystem layout.
+        for (const style of json.mapViewer?.styles || []) {
+          delete style.sldPath;
+        }
 
-      // Set custom feature selection
-      if (this.config.features && this.config.features.length > 0) {
-        json.features = this.config.features;
-      }
+        // Sets map.center and per-layer order/opacity from qgis-project.json — see
+        // manifest-util.js for why this happens here (as a direct mutation of the
+        // already-parsed spec) rather than through new DSL grammar. A no-op when
+        // manifest is null.
+        applyManifestToMaps(json, manifest);
+        // Hidden columns, value maps and map tips of the QGIS layers
+        applyManifestToSpec(json, manifest);
 
-      json.basicData.version = this.config.version || "1.0.0";
+        // A projected QGIS project CRS is what Processing models were most likely
+        // authored against; hand it to the WPS service's env (deploy/.env).
+        const processingCrs = processingCrsFromManifest(manifest);
+        if (processingCrs) {
+          json.basicData.extra = {
+            ...json.basicData.extra,
+            processing_crs: processingCrs,
+          };
+        }
 
-      //If it is a GeoTIFF, check the MV_MS_GeoServer feature
-      if (this.hasInfoGeotiffFiles(allGeographicFilesInfo)) {
-        json.features = [
-          ...json.features,
-          ...["MV_MS_GeoServer", "DM_DI_DF_GeoTIFF"].filter(
-            (f) => !json.features.includes(f)
+        // Set custom feature selection
+        if (this.config.features && this.config.features.length > 0) {
+          json.features = this.config.features;
+        }
+
+        json.basicData.version = this.config.version || "1.0.0";
+
+        //If it is a GeoTIFF, check the MV_MS_GeoServer feature
+        if (this.hasInfoGeotiffFiles(allGeographicFilesInfo)) {
+          json.features = [
+            ...json.features,
+            ...["MV_MS_GeoServer", "DM_DI_DF_GeoTIFF"].filter(
+              (f) => !json.features.includes(f)
+            ),
+          ];
+        }
+
+        // Every generated project gets the QGIS Processing toolbox
+        if (!json.features.includes("MV_Processes")) {
+          json.features = [...json.features, "MV_Processes"];
+        }
+
+        // The web-app options chosen in the plugin (search, legend, downloads...)
+        json.features = applyFeatureOptions(
+          json.features,
+          appOptionsFromManifest(manifest)
+        );
+        // A layer with QGIS temporal settings gets the time slider
+        if (
+          hasTemporalLayers(json) &&
+          !json.features.includes("MV_T_TimeSlider")
+        ) {
+          json.features = [...json.features, "MV_T_TimeSlider"];
+        }
+        // Editable layers turn editing on; changing data then needs the editing password
+        // (nginx checks it against the hash the app carries)
+        if (hasEditableLayers(json)) {
+          if (!json.features.includes("MV_T_Editing")) {
+            json.features = [...json.features, "MV_T_Editing"];
+          }
+          editAccount = editAuth(process.cwd());
+          json.basicData = {
+            ...json.basicData,
+            extra: {
+              ...json.basicData?.extra,
+              edit_htpasswd: editAccount.htpasswd,
+            },
+          };
+        }
+        // Title, primary colour and logo of the app; the logo file itself is copied
+        // once the product exists (below)
+        applyBrandingToSpec(json, manifest, {
+          logoUrl: stageBrandingLogo(geographicFilesFolder, manifest)
+            ? `img/branding/${brandingFromManifest(manifest).logo}`
+            : undefined,
+        });
+
+        // Models the user staged. The product template only bundles its demo model
+        // when this is empty, so a user's own models aren't listed next to it.
+        json.processModels = getModelsFromFolder(
+          path.join(geographicFilesFolder, "models")
+        );
+
+        const chartsFolder = path.join(geographicFilesFolder, "charts");
+        if (!json.chartViewer) json.chartViewer = {};
+        json.chartViewer.charts = getChartsFromJson(chartsFolder);
+
+        fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
+        dataModelHash = dataModelFingerprint(json);
+
+        if (updateData) {
+          // Same layers and fields as the deployed app: only their data is new. The app is
+          // not generated again; the importer files are replaced and the importer runs.
+          const planned = planImportData(directories, "output", rasterNames);
+          const verdict = checkDataUpdate({
+            outputDir: path.resolve("output"),
+            fingerprint: dataModelHash,
+            plannedFiles: Object.keys(planned),
+          });
+          if (!verdict.ok) throw new Error(verdict.reason);
+
+          const staging = createImportStaging("output");
+          for (const entryPath of directories) {
+            copyGeographicDataForImport(
+              entryPath,
+              "output",
+              rasterNames,
+              staging
+            );
+          }
+          staging.finish(editedLayersInfo(manifest, this.config.deploy));
+          return;
+        }
+
+        const engine = await new DerivationEngine({
+          codePath: this.config.platform.codePath,
+          featureModel: readFile(this.config.platform.featureModel),
+          config: readJsonFromFile(this.config.platform.config),
+          extraJS: readFile(this.config.platform.extraJS),
+          modelTransformation: readFile(
+            this.config.platform.modelTransformation
           ),
-        ];
+          verbose: DEBUG,
+        });
+
+        engine.generateProduct("output", readJsonFromFile("spec.json"));
+
+        const modelsFolder = path.join(geographicFilesFolder, "models");
+        copyModelFiles(modelsFolder, "output");
+        stageBrandingLogo(geographicFilesFolder, manifest, "output");
+
+        // Stage the zipped shapefiles for the generated docker-compose stack's own
+        // one-shot importer, regardless of shouldDeploy — otherwise data only ever
+        // loads via a separate, explicit `gispublisher --config ...` deploy run.
+        // Must run after generateProduct, which owns (and may clean) "output".
+        // Generation doesn't wipe old output, and a deployment folder is reused
+        // across runs: `staging.finish()` drops the files of layers removed from the
+        // project (they would still be imported) and leaves unchanged files alone.
+        const staging = createImportStaging("output");
+        for (const entryPath of directories) {
+          copyGeographicDataForImport(
+            entryPath,
+            "output",
+            rasterNames,
+            staging
+          );
+        }
+        staging.finish(editedLayersInfo(manifest, this.config.deploy));
       }
-
-      // Every generated project gets the QGIS Processing toolbox
-      if (!json.features.includes("MV_Processes")) {
-        json.features = [...json.features, "MV_Processes"];
-      }
-
-      // Models the user staged. The product template only bundles its demo model
-      // when this is empty, so a user's own models aren't listed next to it.
-      json.processModels = getModelsFromFolder(
-        path.join(geographicFilesFolder, "models")
-      );
-
-      const chartsFolder = path.join(geographicFilesFolder, "charts");
-      if (!json.chartViewer) json.chartViewer = {};
-      json.chartViewer.charts = getChartsFromJson(chartsFolder);
-
-      fs.writeFileSync("spec.json", JSON.stringify(json, null, 2), "utf-8");
-      dataModelHash = dataModelFingerprint(json);
-
-      const engine = await new DerivationEngine({
-        codePath: this.config.platform.codePath,
-        featureModel: readFile(this.config.platform.featureModel),
-        config: readJsonFromFile(this.config.platform.config),
-        extraJS: readFile(this.config.platform.extraJS),
-        modelTransformation: readFile(this.config.platform.modelTransformation),
-        verbose: DEBUG,
-      });
-
-      engine.generateProduct("output", readJsonFromFile("spec.json"));
-
-      const modelsFolder = path.join(geographicFilesFolder, "models");
-      copyModelFiles(modelsFolder, "output");
-
-      // Stage the zipped shapefiles for the generated docker-compose stack's own
-      // one-shot importer, regardless of shouldDeploy — otherwise data only ever
-      // loads via a separate, explicit `gispublisher --config ...` deploy run.
-      // Must run after generateProduct, which owns (and may clean) "output".
-      // Generation doesn't wipe old output, and a deployment folder is reused
-      // across runs: `staging.finish()` drops the files of layers removed from the
-      // project (they would still be imported) and leaves unchanged files alone.
-      const staging = createImportStaging("output");
-      for (const entryPath of directories) {
-        copyGeographicDataForImport(entryPath, "output", rasterNames, staging);
-      }
-      staging.finish();
-    });
+    );
 
     const outputDir = path.resolve("output");
     if (!deployment) {
-      reporter.result({ outputDir });
+      reporter.result({ outputDir, editAccount });
+      return;
+    }
+
+    if (updateData) {
+      const { url } = await deployment.uploader.updateData(deployment.config, {
+        onEvent: (event) => reporter.forward(event),
+      });
+      reporter.result({ url, outputDir, editAccount });
       return;
     }
 
@@ -377,7 +484,7 @@ export default class GISPublisher {
       onEvent: (event) => reporter.forward(event),
     });
     saveDeployState(outputDir, dataModelHash);
-    reporter.result({ url, outputDir });
+    reporter.result({ url, outputDir, editAccount });
   }
 
   // `--bbox southwest_lng,southwest_lat,northeast_lng,northeast_lat`, documented
@@ -407,6 +514,7 @@ export default class GISPublisher {
         extent: { crs: "EPSG:4326", xmin, ymin, xmax, ymax },
       },
       layersByStaged: manifest?.layersByStaged || {},
+      groups: manifest?.groups || {},
     };
   }
 
@@ -426,10 +534,16 @@ export default class GISPublisher {
       directories.push(rootPath);
     }
 
-    // Include subdirectories (excluding "output")
+    // Include subdirectories (excluding "output", and the branding files, which
+    // are not geographic data)
     directories.push(
       ...entries
-        .filter((entry) => entry.isDirectory() && entry.name !== "output")
+        .filter(
+          (entry) =>
+            entry.isDirectory() &&
+            entry.name !== "output" &&
+            entry.name !== BRANDING_DIR
+        )
         .map((entry) => path.join(rootPath, entry.name))
     );
 
@@ -457,7 +571,7 @@ export default class GISPublisher {
     // by earlier versions used, so a redeploy replaces them instead of clashing
     // with their fixed container names.
     const config = {
-      ...this.config.deploy,
+      ...withEnvCredentials(this.config.deploy),
       repoPath: path.resolve("output"),
     };
     // Where the app answers, when the config says so (the local deployment's

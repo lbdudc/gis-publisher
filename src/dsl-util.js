@@ -80,12 +80,78 @@ export function endDSLInstance(name) {
   return `GENERATE GIS ${name};${EOL}`;
 }
 
+/**
+ * The parsed spec's `LocalDate` properties as the class mini-lps's templates know a date
+ * by (`Date`: its client offers a date picker and date filters for it, and its server
+ * maps it to LocalDate). The DSL has no `Date` type, only `LocalDate`. Mutates and returns
+ * `json`.
+ */
+export function normalizeSpecTypes(json) {
+  for (const entity of json?.data?.dataModel?.entities || []) {
+    for (const property of entity.properties || []) {
+      if (property.class === "LocalDate") property.class = "Date";
+    }
+  }
+  return json;
+}
+
+const DISPLAY_TYPES = ["String", "Number"];
+// Field names people use for "what this feature is called", best first: the whole
+// name, then names that start with one of the words, then names that end with it
+const NAME_WORDS =
+  "name|nombre|nome|nom|title|titulo|label|etiqueta|denominacion|toponimo";
+const EXACT_NAME = new RegExp(`^(${NAME_WORDS})$`, "i");
+const STARTS_WITH_NAME = new RegExp(`^(${NAME_WORDS})`, "i");
+const ENDS_WITH_NAME = new RegExp(`(${NAME_WORDS})$`, "i");
+
+/**
+ * The staged field that says what a feature is called (the entity's DISPLAY_STRING,
+ * shown in suggestions, popups and lists), or null to keep the id. The QGIS layer's
+ * own display field wins (manifest `displayField`, a name in the staged DBF); else
+ * the text field whose name looks most like a name.
+ */
+export function pickDisplayField(schema, manifestEntry = null) {
+  const fields = (schema || []).filter(
+    (f) => f?.name && f.name !== "id" && DISPLAY_TYPES.includes(f.type)
+  );
+
+  const wanted = manifestEntry?.displayField;
+  if (wanted) {
+    const found =
+      fields.find((f) => f.name === wanted) ||
+      fields.find((f) => f.name.toLowerCase() === String(wanted).toLowerCase());
+    if (found) return found.name;
+  }
+
+  const rank = (name) =>
+    EXACT_NAME.test(name)
+      ? 0
+      : STARTS_WITH_NAME.test(name)
+      ? 1
+      : ENDS_WITH_NAME.test(name)
+      ? 2
+      : null;
+  let best = null;
+  for (const f of fields.filter((f) => f.type === "String")) {
+    const r = rank(f.name);
+    if (r !== null && (best === null || r < best.rank)) {
+      best = { name: f.name, rank: r };
+    }
+  }
+  return best ? best.name : null;
+}
+
 export const createEntityScheme = (values, manifest = null) => {
   let schemaSyntax = ``;
 
+  // The reader's field types (see gp-geographic-info-reader's schemaTypeOfDbfField) as
+  // the DSL names them; anything else passes through untouched
   const TYPES_REL = {
     Number: "Long",
     String: "String",
+    Double: "Double",
+    Boolean: "Boolean",
+    Date: "LocalDate",
   };
 
   const layersByStaged = manifest?.layersByStaged || {};
@@ -93,8 +159,15 @@ export const createEntityScheme = (values, manifest = null) => {
   values.forEach((value) => {
     schemaSyntax += `CREATE ENTITY ${upperCamelCase(value.name)} (${EOL}`;
 
-    // Add the id field, which is the first one
-    schemaSyntax += `${TAB}id Long IDENTIFIER DISPLAY_STRING`;
+    // The id is the first field; it is also what the feature is called unless some
+    // other field is a better name for it
+    const displayField = pickDisplayField(
+      value.schema,
+      layersByStaged[value.name]
+    );
+    schemaSyntax += `${TAB}id Long IDENTIFIER${
+      displayField ? "" : " DISPLAY_STRING"
+    }`;
 
     // Manifest field aliases are keyed by staged DBF field name (see
     // core.project_manifest.remap_field_aliases on the plugin side) — exactly
@@ -111,13 +184,15 @@ export const createEntityScheme = (values, manifest = null) => {
         value.schema
           .map((schema) => {
             const alias = aliasByFieldName[schema.name];
+            const isDisplayField = schema.name === displayField;
             if (schema.name == "id") {
               schema.name += "2";
             }
             const asClause = alias ? ` AS "${sanitizeDslText(alias)}"` : "";
+            const displayClause = isDisplayField ? " DISPLAY_STRING" : "";
             return `${TAB}${lowerCamelCase(schema.name)} ${
               TYPES_REL[schema.type] || schema.type
-            }${asClause}`;
+            }${displayClause}${asClause}`;
           })
           .join(`,${EOL}`) +
         `${EOL}`;
@@ -153,10 +228,26 @@ export const createEntityScheme = (values, manifest = null) => {
  * layers.json ended up with two `"name": "base"` entries and the locale
  * files' `layer-label` block got a duplicate JSON key.
  */
-export function createBaseTileLayer() {
-  let mapSyntax = `CREATE TILE LAYER base AS "OpenStreetMap" (${EOL}`;
-  mapSyntax += `${TAB}url "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"${EOL}`;
-  mapSyntax += `);${EOL}${EOL}`;
+export function createBaseTileLayer(basemap = null) {
+  const b = basemap || {
+    label: "OpenStreetMap",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+  };
+  const options = [];
+  if (b.attribution) {
+    options.push(`"attribution" "${dslAttribution(b.attribution)}"`);
+  }
+  if (b.subdomains) options.push(`"subdomains" "${b.subdomains}"`);
+  if (b.maxNativeZoom != null) {
+    options.push(`"maxNativeZoom" "${b.maxNativeZoom}"`);
+  }
+
+  let mapSyntax = `CREATE TILE LAYER base AS "${sanitizeDslText(
+    b.label
+  )}" (${EOL}`;
+  mapSyntax += `${TAB}url "${dslUrl(b.url)}"`;
+  mapSyntax += options.map((option) => `,${EOL}${TAB}${option}`).join("");
+  mapSyntax += `${EOL});${EOL}${EOL}`;
   return mapSyntax;
 }
 

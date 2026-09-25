@@ -28,6 +28,10 @@ const cli = meow(usage, {
       default: false,
       shortFlag: "i",
     },
+    updateData: {
+      type: "boolean",
+      default: false,
+    },
     config: {
       type: "string",
       isRequired: false,
@@ -78,7 +82,8 @@ try {
     folder,
     bbox,
     !cli.flags.generate,
-    cli.flags.onlyImport
+    cli.flags.onlyImport,
+    cli.flags.updateData
   );
 } catch (error) {
   reporter.error(error);

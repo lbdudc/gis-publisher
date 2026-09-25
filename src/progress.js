@@ -13,7 +13,7 @@
  *    "index","total","durationMs","detail"}
  *   {"event":"services","services":[{"name","state","health","status"}]}
  *   {"event":"log","step","line"}
- *   {"event":"result","url","outputDir"}
+ *   {"event":"result","url","outputDir","editUser"?,"editPassword"?}
  *   {"event":"error","step","message","detail"}
  */
 
@@ -120,10 +120,25 @@ export function createReporter(
       else write(line);
     },
 
-    result({ url, outputDir }) {
-      if (json) emit({ event: "result", url, outputDir });
-      else if (url) write(`Application available at ${url}`);
-      else if (outputDir) write(`Application generated in ${outputDir}`);
+    result({ url, outputDir, editAccount }) {
+      if (json) {
+        emit({
+          event: "result",
+          url,
+          outputDir,
+          ...(editAccount
+            ? { editUser: editAccount.user, editPassword: editAccount.password }
+            : {}),
+        });
+      } else {
+        if (url) write(`Application available at ${url}`);
+        else if (outputDir) write(`Application generated in ${outputDir}`);
+        if (editAccount) {
+          write(
+            `Editing account: user "${editAccount.user}", password "${editAccount.password}"`
+          );
+        }
+      }
     },
 
     /** Reports the failure of the whole run. */

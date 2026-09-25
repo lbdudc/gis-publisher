@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { dslLayerId } from "./dsl-util.js";
+import { upperCamelCase, lowerCamelCase } from "./str-util.js";
 
 const MANIFEST_FILENAME = "qgis-project.json";
 
@@ -286,5 +287,108 @@ export function applyManifestToMaps(json, manifest) {
     }
   }
 
+  return json;
+}
+
+/** The generated entity's property name for a staged DBF field (see createEntityScheme). */
+const propertyName = (fieldName) =>
+  lowerCamelCase(fieldName === "id" ? "id2" : fieldName);
+
+const isPlainObject = (v) => v && typeof v === "object" && !Array.isArray(v);
+
+/** `{ stored value: label }` with only text values and at most `max` entries, or null. */
+function cleanValueMap(map, max = 200) {
+  if (!isPlainObject(map)) return null;
+  const entries = Object.entries(map)
+    .filter(([k, v]) => k !== "" && typeof v === "string" && v !== "")
+    .slice(0, max);
+  return entries.length > 0 ? Object.fromEntries(entries) : null;
+}
+
+/**
+ * A map tip template written with the staged field names (`{{NOMBRE}}`) rewritten with the
+ * generated property names the client has (`{{nombre}}`), dropping placeholders of fields
+ * the entity does not have.
+ */
+function templateWithPropertyNames(template, entity) {
+  const known = new Set((entity?.properties || []).map((p) => p.name));
+  return template.replace(/\{\{([^}]*)\}\}/g, (_, field) =>
+    known.has(propertyName(field)) ? `{{${propertyName(field)}}}` : ""
+  );
+}
+
+const DATE_CLASSES = ["Date", "DateTime", "LocalDate"];
+
+/** `{start, end?}` property names for a manifest `temporal` entry, or null. */
+function timeFieldsOf(temporal, entity) {
+  if (!temporal?.startField || !entity) return null;
+  const isDate = (name) =>
+    (entity.properties || []).some(
+      (p) => p.name === name && DATE_CLASSES.includes(p.class)
+    );
+  const start = propertyName(temporal.startField);
+  const end = temporal.endField ? propertyName(temporal.endField) : null;
+  if (!isDate(start) || (end && !isDate(end))) return null;
+  return end ? { start, end } : { start };
+}
+
+/** Whether any layer of the spec can be edited on the map (see applyManifestToSpec). */
+export function hasEditableLayers(json) {
+  return (json?.mapViewer?.layers || []).some((l) => l.editable);
+}
+
+/** Whether any layer of the spec can be filtered by time (see applyManifestToSpec). */
+export function hasTemporalLayers(json) {
+  return (json?.mapViewer?.layers || []).some((l) => l.temporal);
+}
+
+/**
+ * Sets what the DSL has no syntax for on the already-parsed spec: which properties the
+ * QGIS attribute table hides (`hidden`), the labels its value maps give stored codes
+ * (`valueMap`), and the layer's map tip (`popup.template`). mini-lps's client reads all
+ * three when it shows a feature (entities-attributes.json, layers.json).
+ *
+ * A null manifest, or entries the spec has no match for, change nothing. Mutates `json`
+ * in place and returns it.
+ */
+export function applyManifestToSpec(json, manifest) {
+  if (!manifest || !json) return json;
+  const entities = json.data?.dataModel?.entities || [];
+  const layers = json.mapViewer?.layers || [];
+
+  for (const [staged, entry] of Object.entries(manifest.layersByStaged || {})) {
+    const entity = entities.find((e) => e.name === upperCamelCase(staged));
+    const fields = Array.isArray(entry.fields) ? entry.fields : [];
+
+    if (entity) {
+      for (const field of fields) {
+        const property = (entity.properties || []).find(
+          (p) => p.name === propertyName(field.name)
+        );
+        if (!property) continue;
+        if (field.hidden === true) property.hidden = true;
+        const valueMap = cleanValueMap(field.valueMap);
+        if (valueMap) property.valueMap = valueMap;
+      }
+    }
+
+    const layer = layers.find((l) => l.name === dslLayerId(staged));
+
+    // The time fields of a QGIS temporal layer, when they really are dates: the time
+    // slider filters the layer by them
+    const temporal = timeFieldsOf(entry.temporal, entity);
+    if (layer && temporal) layer.temporal = temporal;
+
+    // A layer the QGIS user marked as editable in the web app (it needs its entity: the
+    // edits go through the entity API)
+    if (layer && entity && entry.editable === true) layer.editable = true;
+
+    const template = entry.popup?.template;
+    if (typeof template === "string" && template.trim()) {
+      if (layer) {
+        layer.popup = { template: templateWithPropertyNames(template, entity) };
+      }
+    }
+  }
   return json;
 }
