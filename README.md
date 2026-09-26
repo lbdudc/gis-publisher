@@ -18,12 +18,16 @@ Tool designed to simplify the creation of web-based Geographic Information Syste
 4. [Data Visualizations with Vega](#charts)
 5. [Examples](#examples)
 6. [Development](#development)
-7. [Changing the config.json](#changing-the-configjson)
+7. [Command line](#command-line)
+8. [Changing the config.json](#changing-the-configjson)
    - [Local](#local)
    - [SSH](#ssh)
+   - [HTTPS with your own domain](#https-with-your-own-domain-ssh-aws)
+   - [Generate as a zip](#generate-as-a-zip)
    - [AWS](#aws)
-8. [Authors](#authors)
-9. [License](#license)
+   - [Hetzner Cloud and DigitalOcean](#hetzner-cloud-and-digitalocean)
+9. [Authors](#authors)
+10. [License](#license)
 
 ## Installation
 
@@ -55,8 +59,10 @@ You can customize the features selected in your feature model adding a "features
 ## Usage
 
 ```bash
-gispublisher shapefilesFolder [--generate] [--config path] [--only-import] [--bbox bbox] [--help] [--version] [--debug]
+gispublisher shapefilesFolder [options]
 ```
+
+The options below are the general ones; what to deploy and where (`--type`, `--host`, `--domain`...) is described in [Command line](#command-line), and `gispublisher --help` lists everything.
 
 ### Arguments
 
@@ -65,7 +71,7 @@ gispublisher shapefilesFolder [--generate] [--config path] [--only-import] [--bb
 ### Options
 
 - `--generate, -g`: Just generate the product, do not deploy.
-- `--config`: Path to config file (default config file if not used).
+- `--config`: Path to a configuration file. It only has to say what differs from the defaults; the deploy options of [Command line](#command-line) override it.
 - `--only-import, -i`: Only import shapefiles.
 - `--bbox`: Bounding box to restrict the search. Format is expected to be: `southwest_lng,southwest_lat,northeast_lng,northeast_lat`.
 - `--progress <text|json>`: How progress is reported. `text` (default) prints readable lines such as `[5/8] Upload code - done (8s)`. `json` prints one `@@gp {...}` line per event (`plan`, `step`, `services`, `log`, `result`, `error`) for programs that show their own UI, such as the QGIS plugin; see `src/progress.js` for the event shapes.
@@ -147,6 +153,49 @@ npx gispublisher args
 npx gispublisher examples/hello_world
 ```
 
+## Command line
+
+Everything the QGIS plugin can do with a deployment is available from the command line: the plugin only writes a small configuration file and calls this same command. The folder you give is a folder of shapefiles (with an optional `.sld` style next to each), rasters, `.tiles.json`/`.wms` files, and optionally a `qgis-project.json` with names, order, colours, branding and editable layers.
+
+```sh
+gispublisher <folder> [options]
+```
+
+| Option                                                                                                                                                 | What it does                                                                                                                                                                                        |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--generate`, `-g`                                                                                                                                     | Only generate the app (in `./output`), do not deploy it                                                                                                                                             |
+| `--name`, `--app-version`                                                                                                                              | Name (a plain identifier) and version of the app                                                                                                                                                    |
+| `--type`                                                                                                                                               | `local` (default), `ssh`, `aws`, `hetzner` or `digitalocean`                                                                                                                                        |
+| `--server-name`, `--server-size`, `--server-region`, `--server-image`                                                                                  | The server to create at Hetzner Cloud / DigitalOcean (found again by its name; `--key` is its ssh key). The token comes from `HCLOUD_TOKEN` / `DIGITALOCEAN_TOKEN`, never from an option            |
+| `--host`                                                                                                                                               | ssh/aws: the server; local: the URL the app is opened at                                                                                                                                            |
+| `--port`, `--user`, `--key`, `--remote-path`                                                                                                           | ssh port, user, private key file, and the absolute folder on the server (emptied on every deploy, at least two levels deep)                                                                         |
+| `--domain`, `--acme-email`                                                                                                                             | Serve the app over HTTPS at that name with a free Let's Encrypt certificate (see [HTTPS](#https-with-your-own-domain-ssh-aws))                                                                      |
+| `--internal-certificate`                                                                                                                               | With a domain: a certificate made by the stack itself, for names only your own network knows                                                                                                        |
+| `--zip`, `--zip-file`                                                                                                                                  | With `--generate`: also save the app as a zip to run anywhere with Docker (see [Generate as a zip](#generate-as-a-zip)); `--zip-file` says where (default `<name>-<version>.zip`)                   |
+| `--reset-data`                                                                                                                                         | Start from an empty database (a redeploy keeps it otherwise)                                                                                                                                        |
+| `--update-data`                                                                                                                                        | Reload only the data of an app that is already deployed                                                                                                                                             |
+| `--aws-region`, `--aws-ami`, `--aws-instance-type`, `--aws-instance-name`, `--aws-security-group`, `--aws-key-name`, `--aws-user`, `--aws-remote-path` | The AWS instance to create (`--key` is its ssh key; `--host` uses one that already exists). The keys come from `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` or `AWS_PROFILE`, never from an option |
+| `--config <file>`                                                                                                                                      | A JSON configuration; it only has to say what differs from the defaults, and the options above override it                                                                                          |
+| `--set key=value`                                                                                                                                      | Any other setting by its path, as many times as needed (`--set deploy.overwriteEditedLayers=true`)                                                                                                  |
+| `--progress json`                                                                                                                                      | One `@@gp {...}` event per line, for programs                                                                                                                                                       |
+
+Examples:
+
+```sh
+# over ssh, HTTPS at your domain
+gispublisher ./layers --name demo --type ssh --host 203.0.113.5 --user ubuntu \
+  --key ~/.ssh/id.pem --remote-path /home/ubuntu/demo \
+  --domain gis.example.org --acme-email you@example.org
+
+# a zip for someone else to run anywhere with Docker
+gispublisher ./layers --name demo --generate --zip-file ./demo-1.0.0.zip
+
+# on this machine, only generating
+gispublisher ./layers --name demo --generate
+```
+
+What is missing or wrong (a domain that is not a name, an ssh deployment without a key, an unsafe remote folder...) is reported before anything is generated or built, and the command exits with status 2. The result of a run is printed as `Application available at <url>` or `Zip saved to <file>`; a generated editing password is printed too. On Windows Git Bash rewrites arguments that look like paths (`--remote-path /home/ubuntu/app`): use PowerShell, or set `MSYS_NO_PATHCONV=1`.
+
 ## Changing the config.json
 
 ### Local
@@ -181,6 +230,55 @@ Needs an `ssh`/`scp` client on this machine and key based authentication (no pas
 }
 ```
 
+### HTTPS with your own domain (ssh, aws)
+
+Add `domain` to the `deploy` section to serve the app over HTTPS at that name. A Caddy service is added to the stack: it gets a free Let's Encrypt certificate and renews it by itself.
+
+```json
+"deploy": {
+  "type": "ssh",
+  "domain": "gis.example.org",
+  "acmeEmail": "you@example.org"
+}
+```
+
+- The domain must already point at the server (an A record) and ports 80 and 443 must be open. Before anything is built, the deployment checks that the name leads to the server and stops with a clear message if it does not (for a server that AWS creates during the deployment, which has no address yet, this is only a warning: the certificate is issued as soon as the name points at it). For AWS it also checks that the security group opens 80 and 443.
+- `acmeEmail` is optional (Let's Encrypt sends expiry notices to it).
+- The certificates are kept in `/var/lib/gispublisher/<app>/caddy` on the server, outside the deployment folder, so a redeploy (which empties that folder) does not ask Let's Encrypt for a new one.
+- `"internalCertificate": true` makes Caddy use a certificate of its own instead of Let's Encrypt: for a name only your own network knows, and to try the whole thing out (`"domain": "gp.localhost"` also works with a `local` deployment).
+
+Without a domain the app is served over plain http at the server's address. Do not give people an editing password over plain http on the internet.
+
+### What a deployment to another machine does for security (ssh, aws)
+
+- No service port is published on the server except nginx's (or Caddy's): the database, GeoServer, the API and the QGIS services are only reachable inside the compose network.
+- The database and GeoServer get random passwords made for this deployment, kept next to it in `.gp-deploy-secrets.json` (not uploaded). An app deployed by an earlier version keeps its defaults.
+- nginx does not serve GeoServer's administration pages or REST API.
+- The app's proxy (`/backend/api/proxy`) only calls the stack's own QGIS services and public servers; internal, loopback, link-local and private addresses are refused.
+
+### Live PostGIS / WFS layers
+
+A layer can stay _live_: the app's own GeoServer connects to a PostGIS table or a WFS layer and draws it, so nothing is copied into the app's database (and there is no list, search, download or editing for it). Put a `<name>.live.json` next to the shapefiles of the folder (and a `<name>.sld` for its style if wanted):
+
+```json
+{"kind": "postgis", "host": "db.example.org", "port": 5432, "database": "gis", "schema": "public",
+ "table": "towns", "user": "reader", "password": "...", "srid": 4326}
+{"kind": "wfs", "url": "https://example.org/geoserver/wfs", "typeName": "ns:towns", "user": "", "password": "", "srid": 4326}
+```
+
+A source on the machine that runs the app (`localhost`) is reached as `host.docker.internal`. The connection (and its password) goes only to the server's GeoServer setup, not to the client. A sidecar that is unusable is skipped with a warning.
+
+### Generate as a zip
+
+Generating can also end in a zip, so that whoever receives it can run the app on any machine with Docker. Nothing is deployed, and it is an option of `--generate`, not a deployment target:
+
+```sh
+gispublisher ./layers --name demo --generate --zip
+gispublisher ./layers --name demo --generate --zip-file ./demo-1.0.0.zip
+```
+
+or in the configuration file: `{"zip": true, "zipFile": "/path/to/my-app-1.0.0.zip"}`. The zip is `<name>-<version>.zip` in the current folder unless `zipFile` says otherwise. It holds the app, a `README.md` and `start.sh` / `start.ps1`; the result is the path of the zip, not a URL. The scripts start the stack (`./start.sh`), and with `--domain gis.example.org` (`-Domain` on Windows) also the HTTPS front; `--internal-cert` makes Caddy use its own certificate for names only your network knows. The app made for a zip is the portable flavour of the product, with its own random passwords (kept in `.gp-package-secrets.json` next to the config, and inside the zip, which should therefore stay private).
+
 ### AWS
 
 ```json
@@ -199,6 +297,19 @@ Needs an `ssh`/`scp` client on this machine and key based authentication (no pas
     "REMOTE_REPO_PATH": "/home/ec2-user/code"
 }
 ```
+
+### Hetzner Cloud and DigitalOcean
+
+The deployment creates a server at the provider on the first deploy (Ubuntu, Docker installed for you, a firewall for ports 22, 80 and 443, your public ssh key added to the account) and finds it again by its name on the next ones, so a redeploy keeps the server and its data. From the command line:
+
+```sh
+export HCLOUD_TOKEN=...            # or DIGITALOCEAN_TOKEN=... (never an option or a file)
+gispublisher ./layers --name demo --type hetzner --server-name demo-app --key ~/.ssh/id_ed25519
+gispublisher ./layers --name demo --type digitalocean --server-name demo-app --key ~/.ssh/id_ed25519 \
+  --server-size s-4vcpu-8gb --server-region ams3 --domain gis.example.org
+```
+
+`--key` is the private key; the public half (`<key>.pub`) must be next to it. `--server-size` (default `cx22` / `s-2vcpu-4gb`, 4 GB: the build needs that much), `--server-region` (`fsn1` / `fra1`) and `--server-image` are optional. The user is `root` and the app goes to `/root/gispublisher-app`. `--host` deploys to a server that already exists instead. With `--domain`, the name can only point at the server once it exists, so the certificate is issued as soon as you point the name at it. In a configuration file: `{"deploy": {"type": "hetzner", "serverName": "demo-app", "serverSize": "cx32", "certRoute": "/home/me/.ssh/id_ed25519"}}` (the token still comes from the environment). **These two providers have not been tried against the real services** (an account with a payment method is needed): the flow is tested against a fake API, and a wrong token is refused by the real APIs with a clear message.
 
 ## Authors
 

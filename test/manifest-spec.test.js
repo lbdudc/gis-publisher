@@ -43,6 +43,31 @@ test("hidden columns and value maps go onto the matching properties", () => {
   assert.equal(props.id.hidden, undefined);
 });
 
+test("an internal column (computed label text) is flagged for the generator", () => {
+  const json = spec();
+  json.data.dataModel.entities[0].properties.push({
+    name: "gpLabel",
+    class: "String",
+  });
+  applyManifestToSpec(
+    json,
+    manifest({
+      fields: [
+        { name: "gp_label", hidden: true, internal: true },
+        { name: "nombre", hidden: true },
+      ],
+    })
+  );
+  const props = Object.fromEntries(
+    json.data.dataModel.entities[0].properties.map((p) => [p.name, p])
+  );
+  assert.equal(props.gpLabel.internal, true);
+  assert.equal(props.gpLabel.hidden, true);
+  /* hidden alone is not internal: those columns stay in the lists */
+  assert.equal(props.nombre.hidden, true);
+  assert.equal(props.nombre.internal, undefined);
+});
+
 test("value maps match the camel-cased property name", () => {
   const json = spec();
   json.data.dataModel.entities[0].properties.push({

@@ -4,6 +4,12 @@ import meow from "meow";
 import fs from "fs";
 import GISPublisher from "./main.js";
 import { createReporter } from "./progress.js";
+import {
+  applyCliOptions,
+  deepMerge,
+  deployProblems,
+  DEPLOY_TYPES,
+} from "./cli-options.js";
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -45,24 +51,68 @@ const cli = meow(usage, {
       choices: ["text", "json"],
       default: "text",
     },
+    // What to deploy and where, without a configuration file (see cli-options.js)
+    name: { type: "string" },
+    appVersion: { type: "string" },
+    type: { type: "string", choices: DEPLOY_TYPES },
+    host: { type: "string" },
+    port: { type: "number" },
+    user: { type: "string" },
+    key: { type: "string" },
+    remotePath: { type: "string" },
+    domain: { type: "string" },
+    acmeEmail: { type: "string" },
+    internalCertificate: { type: "boolean", default: false },
+    zip: { type: "boolean", default: false },
+    zipFile: { type: "string" },
+    resetData: { type: "boolean", default: false },
+    awsRegion: { type: "string" },
+    awsAmi: { type: "string" },
+    awsInstanceType: { type: "string" },
+    awsInstanceName: { type: "string" },
+    awsSecurityGroup: { type: "string" },
+    awsKeyName: { type: "string" },
+    awsUser: { type: "string" },
+    awsRemotePath: { type: "string" },
+    serverName: { type: "string" },
+    serverSize: { type: "string" },
+    serverRegion: { type: "string" },
+    serverImage: { type: "string" },
+    set: { type: "string", isMultiple: true },
   },
 });
 
-let configFile;
+// The defaults are always the base: a configuration file (or the flags below) only says what
+// differs, so a short file works too.
+const defaults = JSON.parse(
+  fs.readFileSync(path.join(__dirname, "../config.json"), "utf8")
+);
+let fileConfig = {};
 if (cli.flags.config) {
-  configFile = fs.readFileSync(
-    path.join(process.cwd(), cli.flags.config),
-    "utf8"
+  fileConfig = JSON.parse(
+    fs.readFileSync(path.resolve(process.cwd(), cli.flags.config), "utf8")
   );
-} else {
-  configFile = fs.readFileSync(path.join(__dirname, "../config.json"), "utf8");
 }
 
-const config = JSON.parse(configFile);
+let config;
+try {
+  config = applyCliOptions(deepMerge(defaults, fileConfig), cli.flags);
+} catch (error) {
+  console.error(error.message);
+  process.exit(2);
+}
 
 const folder = cli.input.at(0);
 if (!folder) {
   cli.showHelp();
+}
+
+const problems = deployProblems(config, {
+  deploying: !cli.flags.generate || cli.flags.updateData,
+});
+if (problems.length > 0) {
+  for (const problem of problems) console.error(`Error: ${problem}`);
+  process.exit(2);
 }
 
 const bbox = cli.flags.bbox;

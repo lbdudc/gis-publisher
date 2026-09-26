@@ -3,7 +3,10 @@ import {
   Uploader,
   DebianUploadStrategy,
   AWSUploadStrategy,
+  HetznerStrategy,
+  DigitalOceanStrategy,
   LocalUploadStrategy,
+  PackageStrategy,
 } from "@lbdudc/gp-code-uploader";
 // import { SearchAPIClient } from "giscatalog-client";
 import Processor from "@lbdudc/gp-geographic-info-reader";
@@ -29,9 +32,20 @@ import {
 import { checkDataUpdate } from "./update-data.js";
 import { withEnvCredentials } from "./credentials-util.js";
 import { editAuth } from "./edit-auth.js";
+import {
+  applyPackageToSpec,
+  applyPublicDeployToSpec,
+  deploySecrets,
+  domainOf,
+  isPublicDeploy,
+  packageSecrets,
+  publicUrlFor,
+} from "./public-deploy.js";
+import { packageFiles } from "./package-util.js";
 import { editedLayersInfo } from "./import-util.js";
 import { assignRasterNames, rasterLayerName } from "./raster-util.js";
 import { readTileSidecars } from "./tile-util.js";
+import { applyLiveLayersToSpec, readLiveSidecars } from "./live-util.js";
 import { scopeWmsLayers } from "./wms-util.js";
 import {
   readProjectManifest,
@@ -68,6 +82,7 @@ const GeoTypes = {
   SHAPEFILE: "shapefile",
   WMS: "wms",
   XYZ: "xyz",
+  LIVE: "live",
 };
 
 const __filename = fileURLToPath(import.meta.url);
@@ -155,12 +170,16 @@ export default class GISPublisher {
     const reporter = this.reporter;
     // An update-data run always goes to a deployment, and never regenerates the app
     const deployment = shouldDeploy || updateData ? this.prepareDeploy() : null;
+    // Generating can also end in a zip of the app (with a README and start scripts): the app is
+    // then the portable flavour, made to be started on some other machine
+    const zipping = this.config.zip === true && !shouldDeploy && !updateData;
     reporter.plan([
       { id: "read", label: "Read geographic data" },
       {
         id: "generate",
         label: updateData ? "Prepare the data" : "Generate application",
       },
+      ...(zipping ? [{ id: "package", label: "Create the zip" }] : []),
       ...(deployment
         ? updateData
           ? deployment.uploader.describeUpdate(deployment.config)
@@ -175,12 +194,10 @@ export default class GISPublisher {
     const rasterNames = new Map();
     let dataModelHash = null;
     let editAccount = null; // {user, password, htpasswd} when the app has editable layers
+    let hasEditing = false;
 
     await reporter.runStep("read", "Read geographic data", async () => {
-      dslInstances = createBaseDSLInstance(
-        this.GisName,
-        this.config.deploy.type == "local"
-      );
+      dslInstances = createBaseDSLInstance(this.GisName);
       // Declared exactly once per run, not once per staged directory (see
       // createBaseTileLayer's docstring) — otherwise a grouped project
       // duplicates the "base" tile layer once per group.
@@ -195,6 +212,8 @@ export default class GISPublisher {
             entryPath
           ),
           ...readTileSidecars(entryPath),
+          // PostGIS/WFS layers the app's GeoServer reads from their source
+          ...readLiveSidecars(entryPath),
         ];
         geographicFilesInfo
           .filter((file) => file.type == GeoTypes.TIFF)
@@ -210,7 +229,8 @@ export default class GISPublisher {
           (file) =>
             file.type != GeoTypes.TIFF &&
             file.type != GeoTypes.WMS &&
-            file.type != GeoTypes.XYZ
+            file.type != GeoTypes.XYZ &&
+            file.type != GeoTypes.LIVE
         );
 
         if (geographicFilesInfo.length > 0) {
@@ -309,6 +329,12 @@ export default class GISPublisher {
         applyManifestToMaps(json, manifest);
         // Hidden columns, value maps and map tips of the QGIS layers
         applyManifestToSpec(json, manifest);
+        // The live PostGIS/WFS layers: the app's GeoServer connects to their source
+        applyLiveLayersToSpec(
+          json,
+          allGeographicFilesInfo.filter((file) => file.type == GeoTypes.LIVE),
+          manifest
+        );
 
         // A projected QGIS project CRS is what Processing models were most likely
         // authored against; hand it to the WPS service's env (deploy/.env).
@@ -356,7 +382,8 @@ export default class GISPublisher {
         }
         // Editable layers turn editing on; changing data then needs the editing password
         // (nginx checks it against the hash the app carries)
-        if (hasEditableLayers(json)) {
+        hasEditing = hasEditableLayers(json);
+        if (hasEditing) {
           if (!json.features.includes("MV_T_Editing")) {
             json.features = [...json.features, "MV_T_Editing"];
           }
@@ -376,6 +403,21 @@ export default class GISPublisher {
             ? `img/branding/${brandingFromManifest(manifest).logo}`
             : undefined,
         });
+
+        // A deployment to another machine: its own passwords, its public address, and
+        // no internal service port left open to the network
+        if (zipping) {
+          applyPackageToSpec(json, { secrets: packageSecrets(process.cwd()) });
+        } else if (isPublicDeploy(this.config.deploy)) {
+          applyPublicDeployToSpec(json, {
+            publicUrl: publicUrlFor(this.config.deploy, this.config.host),
+            secrets: deploySecrets(process.cwd()),
+            domain: domainOf(this.config.deploy),
+            acmeEmail: this.config.deploy.acmeEmail,
+            internalCertificate:
+              this.config.deploy.internalCertificate === true,
+          });
+        }
 
         // Models the user staged. The product template only bundles its demo model
         // when this is empty, so a user's own models aren't listed next to it.
@@ -453,7 +495,27 @@ export default class GISPublisher {
 
     const outputDir = path.resolve("output");
     if (!deployment) {
-      reporter.result({ outputDir, editAccount });
+      let file;
+      if (zipping) {
+        // Nothing is deployed, so nothing is recorded as deployed (deploy-state.js)
+        ({ file } = await new PackageStrategy().deploy(
+          {
+            type: "package",
+            repoPath: outputDir,
+            file: path.resolve(
+              this.config.zipFile ||
+                `${this.GisName}-${this.config.version || "1.0.0"}.zip`
+            ),
+            name: this.GisName,
+            extraFiles: packageFiles({
+              name: this.GisName,
+              editing: hasEditing,
+            }),
+          },
+          { onEvent: (event) => reporter.forward(event) }
+        ));
+      }
+      reporter.result({ outputDir, file, editAccount });
       return;
     }
 
@@ -561,6 +623,8 @@ export default class GISPublisher {
     const strategies = {
       ssh: () => new DebianUploadStrategy(),
       aws: () => new AWSUploadStrategy(),
+      hetzner: () => new HetznerStrategy(),
+      digitalocean: () => new DigitalOceanStrategy(),
       local: () => new LocalUploadStrategy(),
     };
     const type = String(this.config.deploy.type || "local").toLowerCase();
@@ -578,6 +642,10 @@ export default class GISPublisher {
     // "http://localhost:80"); ssh/aws derive it from the host they deploy to.
     if (/^https?:\/\//.test(this.config.host || "")) {
       config.url = this.config.host;
+    }
+    // With a domain the app answers over HTTPS there, whatever the target
+    if (domainOf(config)) {
+      config.url = publicUrlFor(config, this.config.host);
     }
 
     return { uploader, config };

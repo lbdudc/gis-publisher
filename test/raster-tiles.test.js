@@ -107,7 +107,7 @@ test("a raster and an XYZ layer go through the DSL parser", () => {
     rasterNames.set("Hillshade", "r_hillshade");
 
     const dsl =
-      createBaseDSLInstance("demo", true) +
+      createBaseDSLInstance("demo") +
       createBaseTileLayer() +
       createLayerDeclarations(info, "/tmp/staged", null, rasterNames) +
       createMapBlock(info, "main", null, "Main") +

@@ -1,10 +1,11 @@
-    Usage: gispublisher shapefilesFolder
+    Usage: gispublisher shapefilesFolder [options]
 
     General options:
       --help            # Print this info
       --generate, -g    # Just generate the product, do not deploy
       --version         # Print version
-      --config          # Path to config file (default config file if not used)
+      --config          # Path to a configuration file (JSON). It only has to say what differs
+                        # from the defaults; the options below override it
       --update-data     # Load new data into the app that is already deployed (no
                         # rebuild, no restart): only for the same layers and fields
       --only-import, -i # Only import shapefiles
@@ -12,4 +13,52 @@
                         # southwest_lng,southwest_lat,northeast_lng,northeast_lat
       --progress        # How progress is reported: "text" (default, readable lines)
                         # or "json" (one `@@gp {...}` line per event, for programs)
+
+    The app:
+      --name            # Name of the app (a plain identifier: letters, digits, underscore)
+      --app-version     # Version of the app (default 1.0.0)
+
+    Where to deploy (default: local Docker):
+      --type            # local | ssh | aws | hetzner | digitalocean
+      --host            # ssh/aws/hetzner/digitalocean: the server (name or IP); local: the URL the app is opened at
+      --port            # ssh port (default 22)
+      --user            # ssh user (needs passwordless sudo the first time: Docker is installed)
+      --key             # ssh private key file
+      --remote-path     # ssh: absolute folder on the server, emptied on every deploy
+                        # (at least two levels deep, e.g. /home/ubuntu/app)
+      --reset-data      # Start from an empty database (a redeploy keeps it otherwise)
+
+    HTTPS (ssh, aws, and local for trying it out):
+      --domain          # Serve the app over HTTPS at this name (it must point at the server,
+                        # ports 80 and 443 open): a free Let's Encrypt certificate
+      --acme-email      # Where Let's Encrypt sends expiry notices (optional)
+      --internal-certificate
+                        # Use a certificate made by the stack itself, for names only your
+                        # own network knows (browsers warn until they trust it)
+
+    Zip (with --generate: nothing is deployed, the app is saved as a zip to run anywhere with Docker):
+      --zip             # Also make <name>-<version>.zip: the app, a README and start scripts
+      --zip-file        # Where to write the zip (implies --zip)
+
+    AWS (the keys come from AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY or AWS_PROFILE):
+      --aws-region  --aws-ami  --aws-instance-type  --aws-instance-name
+      --aws-security-group  --aws-key-name  --aws-user  --aws-remote-path
+      (--key is the ssh private key; --host uses a machine that already exists)
+
+    Hetzner Cloud / DigitalOcean (the token comes from HCLOUD_TOKEN / DIGITALOCEAN_TOKEN;
+    the machine is created on the first deploy and found by its name after, root is the user):
+      --server-name  --server-size  --server-region  --server-image
+      (--key is the ssh private key, its public half must be next to it as <key>.pub;
+       --host uses a machine that already exists)
+
+    Anything else:
+      --set key=value   # Any configuration setting by its path, as many times as needed,
+                        # e.g. --set deploy.overwriteEditedLayers=true
+
+    Examples:
+      gispublisher ./layers --type ssh --host 203.0.113.5 --user ubuntu --key ~/.ssh/id.pem \
+                   --remote-path /home/ubuntu/app --domain gis.example.org --name demo
+      gispublisher ./layers --generate --zip --zip-file ./demo.zip --name demo
+      gispublisher ./layers --generate --name demo
+
     To print debug messages, set the env variable DEBUG=true

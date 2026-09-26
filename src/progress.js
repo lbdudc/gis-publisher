@@ -13,7 +13,7 @@
  *    "index","total","durationMs","detail"}
  *   {"event":"services","services":[{"name","state","health","status"}]}
  *   {"event":"log","step","line"}
- *   {"event":"result","url","outputDir","editUser"?,"editPassword"?}
+ *   {"event":"result","url","outputDir","file"?,"editUser"?,"editPassword"?}
  *   {"event":"error","step","message","detail"}
  */
 
@@ -120,18 +120,20 @@ export function createReporter(
       else write(line);
     },
 
-    result({ url, outputDir, editAccount }) {
+    result({ url, outputDir, file, editAccount }) {
       if (json) {
         emit({
           event: "result",
           url,
           outputDir,
+          ...(file ? { file } : {}),
           ...(editAccount
             ? { editUser: editAccount.user, editPassword: editAccount.password }
             : {}),
         });
       } else {
-        if (url) write(`Application available at ${url}`);
+        if (file) write(`Zip saved to ${file}`);
+        else if (url) write(`Application available at ${url}`);
         else if (outputDir) write(`Application generated in ${outputDir}`);
         if (editAccount) {
           write(

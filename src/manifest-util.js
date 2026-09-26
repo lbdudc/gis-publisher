@@ -367,6 +367,9 @@ export function applyManifestToSpec(json, manifest) {
         );
         if (!property) continue;
         if (field.hidden === true) property.hidden = true;
+        /* a column that only carries data to the map (computed label text): the app's
+           lists, forms and downloads leave it out */
+        if (field.internal === true) property.internal = true;
         const valueMap = cleanValueMap(field.valueMap);
         if (valueMap) property.valueMap = valueMap;
       }

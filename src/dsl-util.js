@@ -1,4 +1,5 @@
 import { upperCamelCase, lowerCamelCase } from "./str-util.js";
+import { liveLayerName } from "./live-util.js";
 import { generateRandomHexColor } from "./color-util.js";
 import path from "path";
 
@@ -47,31 +48,21 @@ const dslAttribution = (html) =>
 // exactly once.
 export const dslLayerId = (stagedName) => `${lowerCamelCase(stagedName)}Layer`;
 
-export function createBaseDSLInstance(name, local) {
+/**
+ * The DSL's opening statements. The deployment settings are the same for every target:
+ * no URL is set here, so the generated client works out where it is served from (its
+ * own address) and reaches the backend and GeoServer through nginx. What differs per
+ * target (a public address, generated passwords) is applied to the parsed spec, see
+ * public-deploy.js.
+ */
+export function createBaseDSLInstance(name) {
   let str = `CREATE GIS ${name} USING 4326;${EOL}`;
   str += `USE GIS ${name};${EOL}${EOL}`;
 
-  if (!local) {
-    str += `SET DEPLOYMENT (${EOL}`;
-    str += `  "client_deploy_url" "http://gis.lbd.org.es",${EOL}`;
-    str += `  "geoserver_user" "admin",${EOL}`;
-    str += `  "geoserver_password" "geoserver",${EOL}`;
-    str += `  "server_deploy_url" "http://gis.lbd.org.es/backend",${EOL}`;
-    str += `  "geoserver_url_wms" "http://gis.lbd.org.es/geoserver",${EOL}`;
-    str += `  "server_deploy_port" "9001"${EOL}`;
-    str += `);${EOL}${EOL}`;
-  } else {
-    str += `SET DEPLOYMENT (${EOL}`;
-    str += `  "geoserver_user" "admin",${EOL}`;
-    // No geoserver_url_wms override here: leave it unset so the generated
-    // client's .env.production falls through to its own D_C_Geoserver/
-    // D_C_Nginx-aware default, which routes WMS requests through nginx's
-    // /geoserver/ proxy when nginx is part of the stack (as server_deploy_url
-    // already does below for the backend) instead of always hitting
-    // GeoServer's own port directly.
-    str += `  "geoserver_password" "geoserver"${EOL}`;
-    str += `);${EOL}${EOL}`;
-  }
+  str += `SET DEPLOYMENT (${EOL}`;
+  str += `  "geoserver_user" "admin",${EOL}`;
+  str += `  "geoserver_password" "geoserver"${EOL}`;
+  str += `);${EOL}${EOL}`;
 
   return str;
 }
@@ -276,6 +267,7 @@ export function createLayerDeclarations(
       const isXyz = sh.type?.toLowerCase() === "xyz";
       const isWms = sh.type?.toLowerCase() === "wms";
       const isExternalWms = isWms && Array.isArray(sh.schema);
+      const isLive = sh.type?.toLowerCase() === "live";
       let geometryType = null;
       if (!isRaster && !isExternalWms && sh.schema?.length) {
         geometryType = sh.schema.find((s) =>
@@ -313,6 +305,31 @@ export function createLayerDeclarations(
             `${TAB}version "${layer.version || "1.3.0"}"${EOL}` +
             `);${EOL}${EOL}`;
         }
+        return sentence;
+      } else if (isLive) {
+        // A PostGIS table or WFS layer the app's GeoServer connects to: declared like a remote
+        // WMS layer, then main.js turns it into a layer of the app's own GeoServer with its
+        // style (applyLiveLayersToSpec): the DSL has no syntax for it
+        const label =
+          sanitizeDslText(layersByStaged[sh.name]?.title) || sh.name;
+        if (sh.hasSld) {
+          sentence +=
+            `CREATE WMS STYLE ${lowerCamelCase(sh.name)}LayerStyle (${EOL}` +
+            `${TAB}styleLayerDescriptor "${path.join(
+              shapefilesFolder,
+              sh.name + ".sld"
+            )}"${EOL}` +
+            `);${EOL}${EOL}`;
+        }
+        sentence +=
+          `CREATE WMS LAYER ${dslLayerId(sh.name)} AS "${label}" (${EOL}` +
+          `${TAB}urlWms "gp-live://${liveLayerName(sh.name)}",${EOL}` +
+          `${TAB}layerName "${liveLayerName(sh.name)}",${EOL}` +
+          `${TAB}format "image/png",${EOL}` +
+          `${TAB}crs "EPSG:4326",${EOL}` +
+          `${TAB}queryable "true",${EOL}` +
+          `${TAB}version "1.3.0"${EOL}` +
+          `);${EOL}${EOL}`;
         return sentence;
       } else if (isXyz) {
         const xyz = sh.xyz || {};

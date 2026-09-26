@@ -33,3 +33,23 @@ test("other deployments and empty environments are left alone", () => {
   assert.equal(withEnvCredentials(ssh, env), ssh);
   assert.deepEqual(withEnvCredentials({ type: "aws" }, {}), { type: "aws" });
 });
+
+test("a hetzner or digitalocean deployment takes its token from the environment", () => {
+  const tokens = { HCLOUD_TOKEN: "hc-token", DIGITALOCEAN_TOKEN: "do-token" }; // pragma: allowlist secret
+  assert.equal(
+    withEnvCredentials({ type: "hetzner" }, tokens).cloudToken,
+    "hc-token"
+  );
+  assert.equal(
+    withEnvCredentials({ type: "digitalocean" }, tokens).cloudToken,
+    "do-token"
+  );
+  assert.equal(
+    withEnvCredentials({ type: "hetzner", cloudToken: "own" }, tokens)
+      .cloudToken,
+    "own"
+  );
+  assert.deepEqual(withEnvCredentials({ type: "hetzner" }, {}), {
+    type: "hetzner",
+  });
+});
